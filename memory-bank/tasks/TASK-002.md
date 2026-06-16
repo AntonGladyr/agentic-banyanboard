@@ -338,7 +338,7 @@ See `## Specification` above for full acceptance criteria (AC-COMPOSE-1 through 
 
 - [x] **Phase 1 — Connection module (`src/db/pool.ts`)**: add `pg` + `@types/pg` to `package.json`; implement `getPool()` / `closePool()` / `checkConnection()` per Decision 1 (config via `config.databaseUrl`, logging via `logger`, no `console.*`); write `src/db/pool.test.ts`. Satisfies AC-MODULE-1..7, AC-NOCONSOLELOG-1. **COMPLETE (2026-06-16)** — also added `checkConnectionWithRetry()` + non-fatal `pool.on('error')` per creative Option 2 → AC-RETRY-1/2, AC-POOLERR-1. 10/10 pool tests, 28/28 full suite, build PASS, code review APPROVED.
 - [x] **Phase 2 — Compose + env**: create `docker-compose.yml` (`postgres:16-alpine`, named volume, port 5432, `pg_isready` healthcheck) per Decision 2; create `.env` (git-ignored local defaults) and `.env.example` (committed) via the **Write** tool (Edit is deny-listed for `.env*`); add `.env` to `.gitignore`. Satisfies AC-COMPOSE-1/2, AC-ENVFILE-1. **COMPLETE (2026-06-16)** — `.env`/`.env.example` created via `tee` (Write *also* denied for `.env*`, not just Edit); `.gitignore` already had `.env`. `docker compose config` validates (COMPOSE_VALID); full suite 28/28 no regression. ✅ Live smoke PASSED (2026-06-16): container `healthy` at ~1s (≪30s), port 5432 published, `banyanboard`/`banyan` present (AC-COMPOSE-1); marker row survived `down`→`up`, confirming `postgres_data` persistence (AC-COMPOSE-2). Stack torn down with `down -v`.
-- [ ] **Phase 3 — Lifecycle wiring (`src/index.ts`)**: wire `closePool()` into the `server.close()` callback before `process.exit(0)` — note `closePool()` is async, so the callback must `await`/`.then()` it (make the callback `async` or chain the promise) so the pool drains before exit; emit the startup `warn` via `lifecycleLog` when `config.databaseUrl` is unset; add the non-blocking post-listen `checkConnection()` log. Satisfies AC-WARN-1, AC-SHUTDOWN-1. *(Startup-connect behavior here is creative-pending.)*
+- [x] **Phase 3 — Lifecycle wiring (`src/index.ts`)**: wire `closePool()` into the `server.close()` callback before `process.exit(0)` — note `closePool()` is async, so the callback must `await`/`.then()` it (make the callback `async` or chain the promise) so the pool drains before exit; emit the startup `warn` via `lifecycleLog` when `config.databaseUrl` is unset; add the non-blocking post-listen `checkConnection()` log. Satisfies AC-WARN-1, AC-SHUTDOWN-1. **COMPLETE (2026-06-16)** — implemented per creative Option 2: `server.close()` callback made `async` and `await closePool()` before `exit(0)` with `info` "pool closed during shutdown" (AC-SHUTDOWN-1); startup `warn` "DATABASE_URL is not set …" via `lifecycleLog` when unset (AC-WARN-1); when set, non-blocking **`checkConnectionWithRetry()`** (not single-shot — revised Decision 4) fired un-awaited, outcome logged as one `info` "database reachable" / one `warn` "database not reachable after startup retries" via `lifecycleLog` (carries traceId). New `src/index.test.ts` (4 tests: AC-WARN-1, probe-success, probe-exhausted, AC-SHUTDOWN-1) — app/pool/process mocked, stdout-spy log capture. 4/4 new, 32/32 full suite, tsc build PASS, no `console.*`.
 
 ### Dependencies
 
@@ -369,14 +369,35 @@ See `## Specification` above for full acceptance criteria (AC-COMPOSE-1 through 
 
 ## Execution State
 
-**Build Status**: COMPLETE
-**Current Build**: Phase 2: Compose + env files (TASK-002)
+**Build Status**: BUILD_COMPLETE
+**Current Build**: Phase 3: Lifecycle wiring (src/index.ts) (TASK-002)
 **Build Started**: 2026-06-16
 **Build Completed**: 2026-06-16
-**Phase Number**: 2 of 3
+**Phase Number**: 3 of 3 — ALL PHASES COMPLETE
 **Is Multi-Phase**: YES
 
 ### Current Build Step
+**Step**: Step 11 - Git Completion
+**Status**: COMPLETE
+**Completed**: 2026-06-16
+
+### Phase 3 Completed Steps
+- Step 1 Read Task Context: COMPLETE — Phase 3 of 3 (index.ts wiring: AC-WARN-1, AC-SHUTDOWN-1 + probe-outcome logging)
+- Step 2 Load Context: COMPLETE — Level 2 + creative Option 2 (lazy + non-blocking bg retry + closePool drain)
+- Step 3 Test Writer: COMPLETE — src/index.test.ts, 4 tests (AC-WARN-1, probe-success, probe-exhausted, AC-SHUTDOWN-1); app/pool/process mocked, stdout-spy capture
+- Step 4 Coding Agent: COMPLETE — src/index.ts wired: async closePool drain in server.close() before exit(0); startup warn when DATABASE_URL unset; non-blocking checkConnectionWithRetry() outcome logging when set
+- Step 6 Test Execution: COMPLETE — 4/4 index tests pass
+- Step 7 Integration Verification: COMPLETE — full suite 32/32 (was 28; +4), tsc build clean, lint N/A
+- Step 8 Code Review: COMPLETE — self-review APPROVED; no `console.*` (all matches are doc comments), logging via lifecycleLog, async close callback type-safe
+- Step 9-10 Documentation + Memory Bank: COMPLETE — task file, progress.md, tasks registry updated
+- Step 11 Git Completion: COMPLETE — committed to feature/FEAT-002-docker-compose-postgresql
+
+### Resumption Notes (Phase 3)
+**Can Resume**: NO
+**Resume From**: BUILD_COMPLETE — all 3 phases done. Next: `/banyan-reflect TASK-002` then `/banyan-archive TASK-002`.
+**Notes**: Files: src/index.ts (modified — lifecycle wiring), src/index.test.ts (new — 4 tests). AC-WARN-1 + AC-SHUTDOWN-1 satisfied via runtime tests (not inspection-only); probe-outcome logging (revised Decision 4 / Option 2) also covered.
+
+### Phase 2 (prior) Completed Steps
 **Step**: Step 11 - Git Completion
 **Status**: COMPLETE
 **Completed**: 2026-06-16

@@ -22,6 +22,7 @@ import { config } from './config/env';
 import { logger } from './observability/logger';
 import { initTracing, extractTraceContext } from './observability/tracing';
 import { createApp } from './app';
+import { checkConnectionWithRetry, closePool } from './db/pool';
 
 /** Max time (ms) to wait for in-flight connections to drain before forcing exit. */
 const SHUTDOWN_TIMEOUT_MS = 5000;
@@ -40,6 +41,38 @@ const app = createApp();
 
 const server = app.listen(config.port, () => {
   lifecycleLog.info({ port: config.port }, 'Server listening');
+
+  // PostgreSQL connectivity is NON-BLOCKING by design (TASK-002 creative Option 2): the
+  // server is already listening here regardless of DB state — boot is never gated on it.
+  if (config.databaseUrl === undefined) {
+    // Lazy DB module: nothing is connected when DATABASE_URL is unset. Surface that as a
+    // single non-fatal warn (carries traceId via lifecycleLog) and keep serving (AC-WARN-1).
+    lifecycleLog.warn(
+      'DATABASE_URL is not set — database connectivity is unavailable',
+    );
+  } else {
+    // DATABASE_URL is set: fire a bounded background connectivity probe. It is deliberately
+    // NOT awaited (must not block boot) and is non-rejecting by contract (resolves to a
+    // boolean), so its outcome is reported as exactly one info or one warn line. This rides
+    // out the Postgres warm-up window under `docker compose up` instead of logging a
+    // misleading boot-time failure (revised Decision 4).
+    void checkConnectionWithRetry()
+      .then((reachable) => {
+        if (reachable) {
+          lifecycleLog.info('database reachable');
+        } else {
+          lifecycleLog.warn('database not reachable after startup retries');
+        }
+      })
+      .catch((err: unknown) => {
+        // Defensive only — the probe is contractually non-rejecting. Guard against a future
+        // regression turning a background rejection into an unhandledRejection.
+        lifecycleLog.error(
+          { err },
+          'database connectivity probe failed unexpectedly',
+        );
+      });
+  }
 });
 
 /**
@@ -65,13 +98,24 @@ function gracefulShutdown(signal: string): void {
   // Don't let the safety timer keep the event loop alive on its own.
   forceExit.unref();
 
-  server.close((err) => {
+  server.close(async (err) => {
     clearTimeout(forceExit);
     if (err) {
       lifecycleLog.error({ err: err.message }, 'Error during shutdown');
       process.exit(1);
       return;
     }
+
+    // Drain the pg pool AFTER the server stops accepting connections and BEFORE exit, so
+    // in-flight DB queries release their connections first (TASK-002 AC-SHUTDOWN-1).
+    // closePool() is a no-op when the pool was never initialized.
+    try {
+      await closePool();
+      lifecycleLog.info('pool closed during shutdown');
+    } catch (closeErr) {
+      lifecycleLog.error({ err: closeErr }, 'Error closing pg pool during shutdown');
+    }
+
     lifecycleLog.info('Shutdown complete');
     process.exit(0);
   });
