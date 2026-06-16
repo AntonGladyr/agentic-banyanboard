@@ -24,6 +24,8 @@ import type { Express } from 'express';
 import { requestLogger } from './middleware/requestLogger';
 import { healthRouter } from './routes/health';
 import { apiRouter } from './routes/index';
+import { notFound } from './middleware/notFound';
+import { errorHandler } from './middleware/errorHandler';
 
 /**
  * Build and return a fully-composed Express app.
@@ -45,9 +47,14 @@ export function createApp(): Express {
   // 3. Versioned API scaffold.
   app.use('/api/v1', apiRouter);
 
-  // 4. [Phase 4] Append `notFound` (terminal JSON 404) then `errorHandler` (4-arg, JSON
-  //    404/500, no stack leak) HERE — they must be registered LAST so all unmatched routes
-  //    and thrown/forwarded errors funnel through them.
+  // 4. Terminal 404 catch-all — any request no router above matched falls through to here and
+  //    receives a structured JSON 404 (never Express's default HTML page).
+  app.use(notFound);
+
+  // 5. Centralized error handler — 4-arg Express error middleware, registered LAST so every
+  //    thrown/forwarded error funnels through it. Maps to JSON 404/500 with no stack leak and
+  //    logs via the request-scoped logger (warn for 4xx, error for 5xx).
+  app.use(errorHandler);
 
   return app;
 }

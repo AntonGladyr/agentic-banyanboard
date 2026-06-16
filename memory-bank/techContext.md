@@ -15,10 +15,14 @@
 - **PostgreSQL**: stub this phase. `DATABASE_URL` is configurable via env but NOT connected; pg client added by a downstream DB task.
 
 ### API & Communication
-- **REST API**: Express-based; all responses JSON. Realized endpoints (Phase 3):
+- **REST API**: Express-based; all responses JSON (including errors — never Express default HTML). Realized endpoints (Phase 3):
   - `GET /health` → 200 JSON health probe (`{status, timestamp}`)
   - `GET /api/v1` → 200 JSON scaffold root (`{api, status}`); domain routers mount under `/api/v1` as added
-  - JSON 404/500 error responses are pending (Phase 4)
+- **Error responses** (Phase 4, realized): centralized terminal middleware returns JSON with a generic label + `traceId` for client correlation (no internal detail leaked):
+  - Unmatched route → `404 {error:'Not Found', path, traceId}`
+  - Carried 4xx client error → that status with `{error:<fixed label>, path, traceId}`
+  - Any other thrown/unhandled error → `500 {error:'Internal Server Error', traceId}`
+  - See `systemPatterns.md` § Error Handling Conventions for the pattern (status mapping, 4xx→warn/5xx→error logging, no stack leak).
 
 ### Development Tools
 - **Build**: `tsc` (TypeScript compiler); `outDir: dist`, `rootDir: src`, `sourceMap: true`, test files excluded from the production build
@@ -78,7 +82,7 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 
 ## Component Structure
 
-[Seeded in `systemPatterns.md` § Architecture Overview. Phase 2 added `src/observability/` (logger, tracing), `src/middleware/requestLogger.ts`, and `src/types/express.d.ts`. Phase 3 added `src/app.ts` (`createApp()` factory), `src/index.ts` (process entry + graceful shutdown), and `src/routes/` (`health.ts`, `index.ts`). Source tree expands as Phase 4 adds the `notFound`/`errorHandler` middleware.]
+[Seeded in `systemPatterns.md` § Architecture Overview. Phase 2 added `src/observability/` (logger, tracing), `src/middleware/requestLogger.ts`, and `src/types/express.d.ts`. Phase 3 added `src/app.ts` (`createApp()` factory), `src/index.ts` (process entry + graceful shutdown), and `src/routes/` (`health.ts`, `index.ts`). Phase 4 added `src/middleware/notFound.ts` and `src/middleware/errorHandler.ts` (centralized JSON error handling). **The BanyanBoard API foundation — config, observability, app composition, health, and error handling — is now COMPLETE (all 4 phases of TASK-001).** Downstream CRUD domain routers (boards/columns/cards) will extend the `/api/v1` tree on top of this foundation.]
 
 ## External Services
 

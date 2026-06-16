@@ -1,6 +1,6 @@
 # System Patterns
 
-> Baseline patterns seeded in Phase 1 of TASK-001 (greenfield). Decisions are authoritative from `memory-bank/creative/TASK-001-express-api-architecture.md`. As of Phase 3 the app-composition layer (`createApp()`, `index.ts`, `/health`, `/api/v1`) is realized; the error-handling layer (`notFound` + `errorHandler`, JSON 404/500) remains a forward reference for Phase 4.
+> Baseline patterns seeded in Phase 1 of TASK-001 (greenfield). Decisions are authoritative from `memory-bank/creative/TASK-001-express-api-architecture.md`. **As of Phase 4 the Express API foundation is COMPLETE — all 4 phases realized**: config (`env.ts`), observability (`logger`/`tracing`/`requestLogger`), app composition (`createApp()`, `index.ts`, `/health`, `/api/v1`), and centralized error handling (`notFound` + `errorHandler`, JSON 404/500). Downstream CRUD (boards/columns/cards) builds on this foundation.
 
 ## Guiding Principles
 
@@ -10,6 +10,7 @@
 | 2 | **Observability-first** — OpenTelemetry-aligned, W3C Trace Context propagation, every log line carries `traceId` | CLAUDE.md (BLOCKING) |
 | 3 | **Structured logging via a reusable abstraction** — JSON logs through a single logger wrapper; never `console.*` in production code | CLAUDE.md (BLOCKING) |
 | 4 | **Clean architecture, complexity only when it earns its keep** — prefer the simplest layout that supports growth without over-engineering the MVP | productBrief |
+| 5 | **No internal error detail in client responses** — error responses carry only a generic label + `traceId`; `err.message`/`err.stack` go to logs only. Clients correlate via `traceId` | Phase 4 / creative doc Observability Architecture |
 
 ## Architecture Overview
 
@@ -26,8 +27,8 @@ src/
 │   └── tracing.ts    # extractTraceContext(), initTracing() no-op seam         [Phase 2 ✓]
 ├── middleware/
 │   ├── requestLogger.ts  # trace ctx + one JSON access-log line on res.finish  [Phase 2 ✓]
-│   ├── notFound.ts       # JSON 404 forwarder                                  [Phase 4]
-│   └── errorHandler.ts   # JSON 404/500, no stack leak                         [Phase 4]
+│   ├── notFound.ts       # terminal JSON 404 catch-all                         [Phase 4 ✓]
+│   └── errorHandler.ts   # 4-arg error mw (last); JSON 4xx/500, no stack leak  [Phase 4 ✓]
 ├── types/
 │   └── express.d.ts  # Express.Request augmentation: log, traceId              [Phase 2 ✓]
 └── routes/
@@ -48,7 +49,7 @@ src/
 ### App factory split — `createApp()` vs `index.ts` [Phase 3, realized]
 - **Problem**: testability — exercise the app via supertest without binding a port.
 - **Pattern**: `src/app.ts` exports a pure `createApp(): Express` (registers middleware/routers, no `listen`, no side effects), so tests pass the app straight to `request(app)`. `src/index.ts` is the only module with side effects (`listen`, signal handlers, `process.exit`).
-- **Composition order** (in `createApp()`): `requestLogger` (first, so all downstream handlers inherit `req.log`/`req.traceId`) → `/health` router → `/api/v1` router → **[`notFound` + 4-arg `errorHandler` appended last in Phase 4]**. The order is fixed; Phase 4 only appends the two terminal middlewares — earlier registrations do not move.
+- **Composition order** (in `createApp()`, finalized Phase 4): `requestLogger` (first, so all downstream handlers inherit `req.log`/`req.traceId`) → `/health` router → `/api/v1` router → `notFound` (terminal 404 catch-all) → `errorHandler` (4-arg, registered LAST). The order is fixed.
 - **Reference**: `src/app.ts`, `src/routes/health.ts`, `src/routes/index.ts`
 
 ### Process-entry pattern — `src/index.ts` [Phase 3, realized]
@@ -65,7 +66,22 @@ src/
 
 ## Error Handling Conventions
 
-[Forward reference — realized in Phase 4.] All responses are JSON, never Express default HTML. A terminal `notFound` middleware emits JSON 404; a 4-arg `errorHandler` (registered last) maps errors to `{error, traceId}`, logs via the logger (`warn` for 4xx, `error` + stack for 5xx), and never leaks stack traces to the client. The process stays alive.
+[Phase 4, realized.] Centralized, two-stage terminal error handling. **All error responses are JSON, never Express default HTML.**
+
+### `notFound` — terminal 404 catch-all — `src/middleware/notFound.ts`
+
+- Registered after all routers; any unmatched request lands here.
+- Responds directly: `404 {error:'Not Found', path:req.originalUrl, traceId:req.traceId}`. Logs the miss at `warn` via `req.log`. Does not forward to `errorHandler` (a 404 is not an exception).
+
+### `errorHandler` — 4-arg Express error middleware — `src/middleware/errorHandler.ts`
+
+- TRUE 4-arg signature `(err, req, res, _next)`, registered **LAST** in `createApp()` (Express recognizes error middleware only by arity).
+- **Status mapping**: a carried client-error `status`/`statusCode` in the 4xx range → that status with `{error:<safe fixed label>, path, traceId}`; everything else → `500 {error:'Internal Server Error', traceId}`.
+- **Security convention (Guiding Principle 5)**: NEVER leaks `err.message` or `err.stack` to the client — responses carry only generic fixed labels + `traceId`. The full error (message + stack) goes to LOGS only (pino serializes the `err` object into the log line); the client correlates via `traceId`.
+- **Logging split**: 4xx → `warn`, 5xx → `error`.
+- **`headersSent` guard**: if the response has already started, delegates to `next(err)` (Express default handler) to avoid a double-send.
+- **Process stays alive**: never rethrows; an unhandled request error is contained, not fatal.
+- No `console.*` — all logging via `req.log`.
 
 ## Observability Conventions
 

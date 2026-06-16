@@ -1,7 +1,7 @@
 # TASK-001: Express API with TypeScript
 
 **Complexity**: Level 3 (inherited from FEAT-001)
-**Status**: BUILD
+**Status**: BUILD_COMPLETE
 **Roadmap**: FEAT-001
 **Branch**: feature/FEAT-001-express-api-typescript
 **Worktree**: N/A (in-place build on feature branch)
@@ -301,7 +301,7 @@ Build the BanyanBoard backend foundation in 4 sequential, independently-verifiab
 - [x] Phase 1: Project scaffolding & config foundation — `package.json` deps, `tsconfig.json`, build/dev/start scripts, `.env.example`, `src/config/env.ts` (→ AC-VERIFY-1, AC-VERIFY-2) — **COMPLETE (2026-06-16)**. Note: `.env.example` deferred (blocked by `Edit(.env.*)` deny rule — needs manual creation).
 - [x] Phase 2: Observability foundation — `src/observability/logger.ts` (structured JSON + traceId), trace-context extraction, `src/middleware/requestLogger.ts` — **COMPLETE (2026-06-16)**. Added `src/observability/tracing.ts` (W3C extract + initTracing seam), `src/types/express.d.ts` (req.log/req.traceId), and `config.serviceVersion`.
 - [x] Phase 3: Express app & health slice — `src/app.ts`, `src/index.ts` (entry + SIGTERM), `src/routes/health.ts`, `src/routes/index.ts` (`/api/v1` scaffold) (→ AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-3) — **COMPLETE (2026-06-16)**. Live smoke verified startup log + /health 200; graceful shutdown verified by inspection (signal delivery untestable on Windows host; works on Linux/Docker). Lifecycle logs now carry a root traceId.
-- [ ] Phase 4: Centralized error handling — `src/middleware/notFound.ts`, `src/middleware/errorHandler.ts` (→ AC-ERROR-1, AC-ERROR-2)
+- [x] Phase 4: Centralized error handling — `src/middleware/notFound.ts`, `src/middleware/errorHandler.ts` (→ AC-ERROR-1, AC-ERROR-2) — **COMPLETE (2026-06-16)**. Wired into createApp() as notFound → errorHandler (LAST). Live smoke confirmed JSON 404 end-to-end; no stack/message leak (dual-asserted).
 
 ## Creative Phases
 
@@ -318,17 +318,30 @@ Build the BanyanBoard backend foundation in 4 sequential, independently-verifiab
 
 ## Build Execution State
 
-**Build Status**: COMPLETE (Phase 3)
-**Current Build**: Phase 3: Express app & health slice (TASK-001) — COMPLETE
+**Build Status**: BUILD_COMPLETE (all 4 phases done)
+**Current Build**: Phase 4: Centralized error handling (TASK-001) — COMPLETE (FINAL PHASE)
 **Build Started**: 2026-06-16
-**Phase Number**: 3 of 4
+**Phase Number**: 4 of 4
 **Is Multi-Phase**: YES
 
 ### Current Build Step
 **Step**: Step 11 - Phase Git Completion
 **Status**: COMPLETE
 **Completed**: 2026-06-16
-**Output**: Phase 3 committed to feature branch; stopped for human review.
+**Output**: Phase 4 committed; ALL phases complete. Task status BUILD_COMPLETE.
+
+### Phase 4 (COMPLETE — FINAL)
+- Test Writer (4 tests) → Coding → Review (APPROVED) → Docs. Suite 18/18, build clean.
+- Files: src/middleware/notFound.ts (JSON 404 + WARN log), src/middleware/errorHandler.ts (4-arg, last; 4xx→warn/5xx→error, no stack/message leak, headersSent guard); app.ts composition finalized (requestLogger→/health→/api/v1→notFound→errorHandler).
+- Live smoke: GET /api/v1/does-not-exist → 404 JSON {error,path,traceId} (AC-ERROR-1 ✓). errorHandler 500 path + server-stays-alive verified by tests (AC-ERROR-2 ✓). No info leak (dual-asserted: stack in log only, absent from body).
+- Code review APPROVED, 0 blocking. No new deps; 0 new security findings.
+
+### All Acceptance Criteria satisfied
+AC-ENTRY-1 ✓ (P3), AC-HAPPY-1 ✓ (P3), AC-HAPPY-2 ✓ (P3), AC-ERROR-1 ✓ (P4), AC-ERROR-2 ✓ (P4), AC-ERROR-3 ✓ (P3, by inspection — Windows signal caveat), AC-VERIFY-1 ✓ (clean tsc build every phase), AC-VERIFY-2 ✓ (P1, single config source).
+
+### Resumption Notes
+**Can Resume**: NO — BUILD_COMPLETE. Next: `/banyan-reflect TASK-001` then `/banyan-archive TASK-001`.
+**Reflection follow-ups**: (1) `.env.example` still needs manual creation (Edit(.env.*) deny rule, deferred all 4 phases); (2) AC-ERROR-3 graceful shutdown verified by inspection only — recommend a Linux/Docker SIGTERM smoke; (3) SEC-DEBT-1 (dev-only js-yaml advisory) tracked in projectbrief.md.
 
 ### Phase 3 (COMPLETE)
 - Test Writer (3 integration tests) → Coding → Review (APPROVED_WITH_NITS) → Docs. Suite 14/14, build clean.
