@@ -1,10 +1,10 @@
 # TASK-001: Express API with TypeScript
 
 **Complexity**: Level 3 (inherited from FEAT-001)
-**Status**: CREATIVE_COMPLETE
+**Status**: BUILD
 **Roadmap**: FEAT-001
 **Branch**: feature/FEAT-001-express-api-typescript
-**Worktree**: N/A
+**Worktree**: N/A (in-place build on feature branch)
 
 ## Task Description
 
@@ -298,7 +298,7 @@ Build the BanyanBoard backend foundation in 4 sequential, independently-verifiab
 
 ## Implementation Roadmap
 
-- [ ] Phase 1: Project scaffolding & config foundation — `package.json` deps, `tsconfig.json`, build/dev/start scripts, `.env.example`, `src/config/env.ts` (→ AC-VERIFY-1, AC-VERIFY-2)
+- [x] Phase 1: Project scaffolding & config foundation — `package.json` deps, `tsconfig.json`, build/dev/start scripts, `.env.example`, `src/config/env.ts` (→ AC-VERIFY-1, AC-VERIFY-2) — **COMPLETE (2026-06-16)**. Note: `.env.example` deferred (blocked by `Edit(.env.*)` deny rule — needs manual creation).
 - [ ] Phase 2: Observability foundation — `src/observability/logger.ts` (structured JSON + traceId), trace-context extraction, `src/middleware/requestLogger.ts`
 - [ ] Phase 3: Express app & health slice — `src/app.ts`, `src/index.ts` (entry + SIGTERM), `src/routes/health.ts`, `src/routes/index.ts` (`/api/v1` scaffold) (→ AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-3)
 - [ ] Phase 4: Centralized error handling — `src/middleware/notFound.ts`, `src/middleware/errorHandler.ts` (→ AC-ERROR-1, AC-ERROR-2)
@@ -316,15 +316,46 @@ Build the BanyanBoard backend foundation in 4 sequential, independently-verifiab
 
 ## Execution State
 
-**Build Status**: IDLE
-**Current Phase**: CREATIVE → BUILD
-**Last Completed**: CREATIVE (Architecture design — 5 decisions resolved)
-**Can Resume**: NO
+## Build Execution State
 
-### Active Sub-Agents
-- Architecture Design: COMPLETE (2026-06-16)
+**Build Status**: COMPLETE (Phase 1)
+**Current Build**: Phase 1: Project scaffolding & config foundation (TASK-001) — COMPLETE
+**Build Started**: 2026-06-16
+**Phase Number**: 1 of 4
+**Is Multi-Phase**: YES
+
+### Current Build Step
+**Step**: Step 11 - Phase Git Completion
+**Status**: COMPLETE
+**Completed**: 2026-06-16
+**Output**: Phase 1 committed to feature branch; stopped for human review.
 
 ### Completed Steps
+- Step 0.5 Git Setup: COMPLETE (2026-06-16) - Base commit on master, feature/FEAT-001-express-api-typescript branch created (in-place, no worktree)
+- Step 0.6 Phase Gate: COMPLETE (2026-06-16) - Roadmap populated, Architecture creative phase complete
+- Step 1 Read Task Context: COMPLETE (2026-06-16) - Phase 1 of 4 identified (Level 3)
+- Step 2 Load Context: COMPLETE (2026-06-16) - Level 3 rules + architecture creative doc loaded
+- Step 3 Test Writer: COMPLETE (2026-06-16) - 4 unit tests in src/config/env.test.ts
+- Step 4 Coding Agent: COMPLETE (2026-06-16) - package.json, tsconfig.json, jest.config.js, jest.setup.ts, .nvmrc, src/config/env.ts (.env.example blocked by deny rule)
+- Step 6 Test Execution: COMPLETE (2026-06-16) - 4/4 tests pass (single config batch)
+- Step 7 Integration Verification: COMPLETE (2026-06-16) - Tests 4/4 PASS, Build PASS (dist/ + source maps), Lint N/A (no ESLint configured)
+- Step 8 Code Review: COMPLETE (2026-06-16) - APPROVED_WITH_NITS; NIT-1 (stray self-dep from npm --prefix bug) fixed; deps: 0 prod vulns, 19 dev-only moderate (js-yaml via jest) deferred LOW
+- Step 9 Documentation: COMPLETE (2026-06-16) - Seeded systemPatterns.md + techContext.md baselines
+- Step 10 Memory Bank: COMPLETE (2026-06-16) - tasks.md, progress.md, TASK-001.md updated
+- Step 11 Git Completion: COMPLETE (2026-06-16) - Phase 1 committed
+
+### Sub-Agents
+- Test Writer (build-test-writer-agent): COMPLETE - 4 tests
+- Coding Agent (build-coding-agent): COMPLETE - scaffolding + env.ts
+- Code Reviewer (build-code-reviewer-agent): COMPLETE - APPROVED_WITH_NITS
+- Documentation Agent (build-documentation-agent): COMPLETE - patterns seeded
+
+### Resumption Notes
+**Can Resume**: NO (Phase 1 complete — awaiting human review before Phase 2)
+**Resume From**: N/A — run `/banyan-build TASK-001` for Phase 2 (Observability foundation)
+**Notes**: `.env.example` still needs manual creation (blocked by `Edit(.env.*)` deny rule). Dev-only js-yaml advisory (GHSA-h67p-54hq-rp68) tracked as LOW-priority deferred toolchain bump.
+
+### Prior Phases
 - PLAN: Spec Writer Agent (Sonnet) drafted specification — human approved 2026-06-16
-- PLAN: Implementation roadmap (4 phases), test strategy (~14 tests), and Architecture creative phase flagged
+- PLAN: Implementation roadmap (4 phases), test strategy (~14 tests), Architecture creative phase flagged
 - CREATIVE: Architecture Design (Opus) — 5 decisions resolved, output: `memory-bank/creative/TASK-001-express-api-architecture.md` (2026-06-16)
