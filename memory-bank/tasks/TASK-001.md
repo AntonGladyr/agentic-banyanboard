@@ -299,7 +299,7 @@ Build the BanyanBoard backend foundation in 4 sequential, independently-verifiab
 ## Implementation Roadmap
 
 - [x] Phase 1: Project scaffolding & config foundation — `package.json` deps, `tsconfig.json`, build/dev/start scripts, `.env.example`, `src/config/env.ts` (→ AC-VERIFY-1, AC-VERIFY-2) — **COMPLETE (2026-06-16)**. Note: `.env.example` deferred (blocked by `Edit(.env.*)` deny rule — needs manual creation).
-- [ ] Phase 2: Observability foundation — `src/observability/logger.ts` (structured JSON + traceId), trace-context extraction, `src/middleware/requestLogger.ts`
+- [x] Phase 2: Observability foundation — `src/observability/logger.ts` (structured JSON + traceId), trace-context extraction, `src/middleware/requestLogger.ts` — **COMPLETE (2026-06-16)**. Added `src/observability/tracing.ts` (W3C extract + initTracing seam), `src/types/express.d.ts` (req.log/req.traceId), and `config.serviceVersion`.
 - [ ] Phase 3: Express app & health slice — `src/app.ts`, `src/index.ts` (entry + SIGTERM), `src/routes/health.ts`, `src/routes/index.ts` (`/api/v1` scaffold) (→ AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-3)
 - [ ] Phase 4: Centralized error handling — `src/middleware/notFound.ts`, `src/middleware/errorHandler.ts` (→ AC-ERROR-1, AC-ERROR-2)
 
@@ -318,17 +318,32 @@ Build the BanyanBoard backend foundation in 4 sequential, independently-verifiab
 
 ## Build Execution State
 
-**Build Status**: COMPLETE (Phase 1)
-**Current Build**: Phase 1: Project scaffolding & config foundation (TASK-001) — COMPLETE
+**Build Status**: COMPLETE (Phase 2)
+**Current Build**: Phase 2: Observability foundation (TASK-001) — COMPLETE
 **Build Started**: 2026-06-16
-**Phase Number**: 1 of 4
+**Phase Number**: 2 of 4
 **Is Multi-Phase**: YES
 
 ### Current Build Step
 **Step**: Step 11 - Phase Git Completion
 **Status**: COMPLETE
 **Completed**: 2026-06-16
-**Output**: Phase 1 committed to feature branch; stopped for human review.
+**Output**: Phase 2 committed to feature branch; stopped for human review.
+
+### Phase 1 (COMPLETE — committed 5a0ba60)
+- Test Writer → Coding → Review (APPROVED_WITH_NITS) → Docs. Tests 4/4, build clean.
+- Deferred: `.env.example` (Edit(.env.*) deny rule); js-yaml dev-only advisory (SEC-DEBT-1).
+
+### Phase 2 (COMPLETE)
+- Test Writer (7 tests) → Coding → Review (APPROVED) → Docs. Suite 11/11, build clean.
+- Files: src/observability/logger.ts, tracing.ts, src/middleware/requestLogger.ts, src/types/express.d.ts; env.ts +serviceVersion.
+- Orchestrator fix pre-review: removed direct `process.env` read in logger.ts (routed version through config.serviceVersion to preserve single-config-source invariant).
+- Code review: APPROVED, 0 blocking, 3 optional forward-looking nits. Security: 0 new findings, no new deps.
+
+### Resumption Notes
+**Can Resume**: NO (Phase 2 complete — awaiting human review before Phase 3)
+**Resume From**: N/A — run `/banyan-build TASK-001` for Phase 3 (Express app & health slice)
+**Notes**: `.env.example` still needs manual creation (Edit(.env.*) deny rule). requestLogger + tracing ready to wire into createApp() in Phase 3.
 
 ### Completed Steps
 - Step 0.5 Git Setup: COMPLETE (2026-06-16) - Base commit on master, feature/FEAT-001-express-api-typescript branch created (in-place, no worktree)

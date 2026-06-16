@@ -22,12 +22,14 @@ src/
 ├── config/
 │   └── env.ts        # typed, validated, frozen single config source           [Phase 1 ✓]
 ├── observability/
-│   ├── logger.ts     # pino wrapper; child({traceId, spanId})                  [Phase 2]
-│   └── tracing.ts    # extractTraceContext(), initTracing() no-op seam         [Phase 2]
+│   ├── logger.ts     # pino JSON→stdout; child({traceId, spanId})             [Phase 2 ✓]
+│   └── tracing.ts    # extractTraceContext(), initTracing() no-op seam         [Phase 2 ✓]
 ├── middleware/
-│   ├── requestLogger.ts  # trace ctx + JSON request log                        [Phase 2]
+│   ├── requestLogger.ts  # trace ctx + one JSON access-log line on res.finish  [Phase 2 ✓]
 │   ├── notFound.ts       # JSON 404 forwarder                                  [Phase 4]
 │   └── errorHandler.ts   # JSON 404/500, no stack leak                         [Phase 4]
+├── types/
+│   └── express.d.ts  # Express.Request augmentation: log, traceId              [Phase 2 ✓]
 └── routes/
     ├── index.ts      # /api/v1 router scaffold (composition root)              [Phase 3]
     └── health.ts     # GET /health                                            [Phase 3]
@@ -48,15 +50,22 @@ src/
 - **Pattern**: `src/app.ts` exports a pure `createApp(): Express` (registers middleware/routers, no `listen`, no side effects). `src/index.ts` is the only module with side effects (`listen`, signal handlers, `process.exit`).
 - **Composition order** (in `createApp()`): `requestLogger` → `/health` → `/api/v1` → `notFound` → `errorHandler` (4-arg, last).
 
+### Request augmentation — `req.log` / `req.traceId` [Phase 2, realized]
+- **Problem**: every handler needs trace-correlated logging without threading a logger through call signatures.
+- **Pattern**: a global `Express.Request` augmentation in `src/types/express.d.ts` adds `log: Logger` and `traceId: string`. `requestLogger` populates both per request, so downstream handlers log via `req.log` and inherit the request's trace context for free.
+- **Reference**: `src/types/express.d.ts`, `src/middleware/requestLogger.ts`
+
 ## Error Handling Conventions
 
 [Forward reference — realized in Phase 4.] All responses are JSON, never Express default HTML. A terminal `notFound` middleware emits JSON 404; a 4-arg `errorHandler` (registered last) maps errors to `{error, traceId}`, logs via the logger (`warn` for 4xx, `error` + stack for 5xx), and never leaks stack traces to the client. The process stays alive.
 
 ## Observability Conventions
 
-- **Structured JSON logging** through the `pino` wrapper in `src/observability/logger.ts` — never `console.*`. Base fields: `level`, `msg`, `time` (ISO 8601), `service`, `version`, `environment`; request-scoped `child({traceId, spanId})` adds trace context. *(logger lands in Phase 2.)*
-- **W3C Trace Context propagation**: `extractTraceContext()` parses the inbound `traceparent` header (`00-<32hex>-<16hex>-<2hex>`) or mints a fresh root `traceId` when absent/malformed. `initTracing()` is a documented no-op seam — the single future wiring point for `@opentelemetry/sdk-node` + OTLP export (not built this task). Depends on `@opentelemetry/api` only. *(tracing lands in Phase 2.)*
-- **Env-driven verbosity/format/output** via `LOG_LEVEL`/`LOG_FORMAT`/`LOG_OUTPUT` (see `techContext.md`).
+- **Structured JSON logging** through the `pino` wrapper in `src/observability/logger.ts` [Phase 2, realized] — never `console.*`. Configured from the single `config` object: `level = config.logLevel`, base fields `service` (otelServiceName), `environment` (nodeEnv), `version` (serviceVersion); pino supplies `level`, `msg`, `time`. Writes newline-delimited JSON to `process.stdout`. Request-scoped logging via `.child({ traceId, spanId })` binds trace context to every line. *Pretty-print and file sinks are intentionally NOT wired this phase (JSON-to-stdout only); `LOG_FORMAT`/`LOG_OUTPUT`/`LOG_FILE_PATH` remain config-only knobs reserved for a later phase.*
+- **W3C Trace Context propagation** in `src/observability/tracing.ts` [Phase 2, realized]: `extractTraceContext(headers)` performs a manual parse of the inbound `traceparent` header (`00-<32hex>-<16hex>-<2hex>`, rejecting all-zero trace/span ids) and mints a fresh CSPRNG (`crypto.randomBytes`) root id pair when the header is absent or malformed. It never throws. Depends on `@opentelemetry/api` only — no `@opentelemetry/sdk-node`.
+- **`initTracing()` no-op seam** [Phase 2, realized]: a documented no-op that establishes the single future wiring point for `@opentelemetry/sdk-node` + OTLP export. Realizing it does not change current behavior — it makes the extension point explicit so SDK adoption is an additive change at one site.
+- **Request-logging middleware contract** — `src/middleware/requestLogger.ts` [Phase 2, realized]: derives trace context via `extractTraceContext`, attaches `req.log` (a child logger bound to the request's `traceId`/`spanId`) and `req.traceId`, times the request with `process.hrtime.bigint()`, and emits exactly ONE JSON access-log line on `res.finish` with `method`, `path`, `statusCode`, `durationMs`. Must be registered FIRST in `createApp()` (Phase 3) so all downstream handlers inherit `req.log`/`req.traceId`.
+- **Metrics**: deferred — no metrics endpoint or instrumentation this task.
 
 ## Testing Patterns
 

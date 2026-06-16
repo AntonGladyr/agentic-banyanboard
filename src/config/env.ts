@@ -21,6 +21,7 @@ const DEFAULTS = {
   logFormat: 'json',
   logOutput: 'stdout',
   otelServiceName: 'banyanboard-api',
+  serviceVersion: '0.0.0',
   otelTracesSamplerArg: '1.0',
 } as const;
 
@@ -40,6 +41,8 @@ export interface AppConfig {
   readonly logFilePath: string | undefined;
   /** Service identifier surfaced as the logger `service` field (OTEL_SERVICE_NAME). */
   readonly otelServiceName: string;
+  /** Service version surfaced as the logger `version` field (npm_package_version). */
+  readonly serviceVersion: string;
   /** Collector endpoint (OTEL_EXPORTER_OTLP_ENDPOINT) — stub, no exporter built this task. */
   readonly otelExporterOtlpEndpoint: string | undefined;
   /** Trace sampling ratio reserved for future SDK wiring (OTEL_TRACES_SAMPLER_ARG). */
@@ -98,6 +101,7 @@ function loadConfig(): AppConfig {
     logOutput: readEnv('LOG_OUTPUT') ?? DEFAULTS.logOutput,
     logFilePath: readEnv('LOG_FILE_PATH'),
     otelServiceName: readEnv('OTEL_SERVICE_NAME') ?? DEFAULTS.otelServiceName,
+    serviceVersion: readEnv('npm_package_version') ?? DEFAULTS.serviceVersion,
     otelExporterOtlpEndpoint: readEnv('OTEL_EXPORTER_OTLP_ENDPOINT'),
     otelTracesSamplerArg:
       readEnv('OTEL_TRACES_SAMPLER_ARG') ?? DEFAULTS.otelTracesSamplerArg,

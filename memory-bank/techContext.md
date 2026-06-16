@@ -30,7 +30,15 @@ Strict baseline plus targeted flags (Decision 4 in the creative doc):
 - `exactOptionalPropertyTypes` deliberately deferred (clashes with Express/optional-config types; revisit only if a real bug appears)
 
 ### Observability
-Only env-layer config exists in Phase 1. The logger (`pino`) and tracing (`@opentelemetry/api` manual W3C extraction) are **scaffolded in Phase 2**; the request-logging middleware and `initTracing()` seam follow. Observability deps present in `package.json` this phase: `@opentelemetry/api` (`^1.9.0`), `pino` (`^9.5.0`), `pino-pretty` (dev). The OTLP exporter and full `@opentelemetry/sdk-node` are intentionally NOT installed (future task).
+The logger (`pino`) and tracing (`@opentelemetry/api` manual W3C extraction) are **IMPLEMENTED as of Phase 2**, along with the request-logging middleware and the `initTracing()` no-op seam:
+
+- **Logging** — `pino` writes newline-delimited JSON to `process.stdout`, level driven by `config.logLevel`. JSON-to-stdout is the only sink wired this phase; pretty-print and file sinks are **deferred** (`LOG_FORMAT`/`LOG_OUTPUT`/`LOG_FILE_PATH` are accepted as config but not yet acted on). `pino-pretty` remains a dev dependency only.
+- **Tracing** — `@opentelemetry/api` only; W3C `traceparent` extraction is hand-rolled with a CSPRNG fresh-id fallback. The OTLP exporter and full `@opentelemetry/sdk-node` are intentionally NOT installed; `initTracing()` is the documented future wiring point.
+- **Metrics** — deferred (no endpoint or instrumentation this task).
+
+Observability deps in `package.json`: `@opentelemetry/api` (`^1.9.0`), `pino` (`^9.5.0`), `pino-pretty` (dev).
+
+See `systemPatterns.md` § Observability Conventions for the logger/tracing/middleware patterns, and `memory-bank/creative/TASK-001-express-api-architecture.md` § Observability Architecture for the authoritative design.
 
 See `memory-bank/creative/TASK-001-express-api-architecture.md` § Observability Architecture for the full logging/tracing design.
 
@@ -58,6 +66,7 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 | `LOG_OUTPUT` | Destination (`stdout`/`file`/`both`) | `stdout` |
 | `LOG_FILE_PATH` | File sink path (required when output includes file) | — |
 | `OTEL_SERVICE_NAME` | Service identifier (logger `service` field) | `banyanboard-api` |
+| `npm_package_version` | Service version (logger `version` field; exposed as `config.serviceVersion`, sourced from the `npm_package_version` env var npm sets at runtime) | `0.0.0` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Collector endpoint (stub — no exporter built this phase) | — |
 | `OTEL_TRACES_SAMPLER_ARG` | Sampling ratio (reserved for future SDK wiring) | `1.0` |
 | `DATABASE_URL` | PostgreSQL DSN (stub — configurable, NOT connected) | — |
@@ -66,7 +75,7 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 
 ## Component Structure
 
-[Seeded in `systemPatterns.md` § Architecture Overview. Source tree to expand as Phases 2–4 add `src/observability`, `src/middleware`, `src/routes`, `src/app.ts`, and `src/index.ts`.]
+[Seeded in `systemPatterns.md` § Architecture Overview. Phase 2 added `src/observability/` (logger, tracing), `src/middleware/requestLogger.ts`, and `src/types/express.d.ts`. Source tree to expand as Phases 3–4 add `src/routes`, `src/app.ts`, `src/index.ts`, and the remaining middleware.]
 
 ## External Services
 
