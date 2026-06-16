@@ -13,16 +13,19 @@
 
 | Task ID | Date | Learnings Extracted | Rules Amended | Rules Created |
 |---------|------|--------------------:|-------------:|-------------:|
-| (none yet) | | | | |
+| TASK-001 | 2026-06-16 | 4 | 0 | 4 |
 
 ## Rule Effectiveness
 
 | File | Topics | Evidence Count | Priority | Last Updated |
 |------|--------|---------------:|:--------:|:------------:|
-| (none yet) | | | | |
+| testing-patterns.md | testing, jest, logging | 1 | low | 2026-06-16 |
+| api-design.md | api-design, express, testability | 1 | low | 2026-06-16 |
+| error-handling.md | error-handling, express, security | 1 | low | 2026-06-16 |
+| typescript-config.md | typescript, config, 12-factor | 1 | low | 2026-06-16 |
 
 ## Consolidation History
 
 | Date | Rules Before | Rules After | Merged | Expired | Promoted |
 |------|------------:|------------:|-------:|--------:|---------:|
-| (none yet) | | | | | |
+| 2026-06-16 | 4 | 4 | 0 | 0 | 0 |

@@ -1,7 +1,23 @@
 # Progress
 
+---
+
+## Task Archive: TASK-001
+
+**Task**: Express API with TypeScript (BanyanBoard backend foundation)
+**Status**: ✅ ARCHIVED
+**Date**: 2026-06-16
+**Archive**: `memory-bank/archive/archive-TASK-001.md`
+
+---
+
 ## Implementation History
 
 | Date | Task | Phase | Notes |
 |------|------|-------|-------|
 | 2026-06-16 | TASK-001 | CREATIVE | Architecture design complete — 5 decisions (flat layers, pino, minimal manual OTel, strict+targeted tsconfig, Jest+supertest). Output: creative/TASK-001-express-api-architecture.md |
+| 2026-06-16 | TASK-001 | BUILD Phase 1/4 | Project scaffolding & config foundation. Files: package.json (express/pino/@otel-api + jest/ts-jest/tsx/supertest devDeps), tsconfig.json (strict+targeted+isolatedModules, NodeNext/CJS), jest.config.js, jest.setup.ts, .nvmrc (20), src/config/env.ts (typed/frozen/fail-fast config — sole process.env reader). Tests: 4/4 pass (env.test.ts). Build: PASS (dist/ + source maps). Code review: APPROVED_WITH_NITS (NIT-1 self-dep fixed). Security: 0 prod vulns; 19 dev-only moderate (js-yaml via jest) deferred LOW. Deferred: `.env.example` (blocked by Edit(.env.*) deny rule). |
+| 2026-06-16 | TASK-001 | BUILD Phase 2/4 | Observability foundation. Files: src/observability/logger.ts (pino → JSON-to-stdout, base fields service/environment/version, .child() for traceId/spanId), src/observability/tracing.ts (manual W3C traceparent extract + CSPRNG fallback, initTracing() no-op seam, @otel-api only — no sdk-node), src/middleware/requestLogger.ts (req.log/req.traceId + access-log on res.finish), src/types/express.d.ts (Request augmentation); env.ts +serviceVersion. Tests: 11/11 pass (7 new: tracing 4, logger 3). Build: PASS. Code review: APPROVED (0 blocking; orchestrator pre-fix removed a direct process.env read in logger.ts → routed via config.serviceVersion). Security: 0 new findings, no new deps. |
+| 2026-06-16 | TASK-001 | BUILD Phase 4/4 (BUILD_COMPLETE) | Centralized error handling. Files: src/middleware/notFound.ts (terminal JSON 404 {error,path,traceId} + WARN log, never HTML), src/middleware/errorHandler.ts (4-arg Express error mw registered LAST; 4xx→labelled JSON+warn / 5xx→{error:'Internal Server Error',traceId}+error log; SECURITY: never leaks err.message/stack to client — logs only; headersSent guard; process stays alive); app.ts composition finalized (requestLogger→/health→/api/v1→notFound→errorHandler). Tests: 18/18 pass (4 new: notFound 1, errorHandler 3). Build: PASS. Live smoke: JSON 404 end-to-end. Code review: APPROVED (0 blocking; no info leak dual-asserted). Security: 0 new findings, no new deps. ACs met: AC-ERROR-1, AC-ERROR-2. **All 8 task ACs now satisfied — BUILD_COMPLETE.** Reflection follow-ups: manual .env.example (deny rule); Linux/Docker SIGTERM smoke for AC-ERROR-3; SEC-DEBT-1 (dev-only js-yaml). |
+| 2026-06-16 | TASK-001 | REFLECT (REFLECTION_COMPLETE) | Reflection document created: reflection-TASK-001.md. Two-dimensional eval — Task Quality: Partial Success (7/8 ACs live-evidenced; AC-ERROR-3 inspection-only on Windows; `.env.example` scope gap); Ecosystem: Moderately Effective (creative-phase ROI high, zero mid-phase reversals; friction: `Edit(.env.*)` deny rule blocked `.env.example` all 4 phases, absent by-task session logs). Continuous learning: 4 learnings extracted → 4 new `_learned/` rule files (testing-patterns, api-design, error-handling, typescript-config); 0 amended. Follow-ups: (1) create `.env.example` manually; (2) Linux/Docker SIGTERM smoke for AC-ERROR-3; (3) enable by-task session log symlinking. |
+| 2026-06-16 | TASK-001 | BUILD Phase 3/4 | Express app & health slice. Files: src/app.ts (createApp() pure factory — requestLogger→/health→/api/v1, notFound/errorHandler insertion point marked for Phase 4), src/index.ts (entry: initTracing→createApp→listen + structured startup log; SIGTERM/SIGINT graceful shutdown w/ 5s force-exit timer + double-invocation guard; root traceId for lifecycle logs), src/routes/health.ts (GET /health → 200 {status,timestamp}), src/routes/index.ts (/api/v1 scaffold + JSON stub root). Tests: 14/14 pass (3 new supertest integration). Build: PASS. Live smoke: startup log + /health 200 + graceful shutdown (signal delivery untestable on Windows; correct for Linux/Docker). Code review: APPROVED_WITH_NITS — orchestrator fixed NIT-1 (dup service field) + NIT-2 (lifecycle traceId) before commit. Security: 0 new findings, no new deps. ACs met: AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-3. |

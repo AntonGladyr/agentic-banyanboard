@@ -1,10 +1,13 @@
 # TASK-001: Express API with TypeScript
 
 **Complexity**: Level 3 (inherited from FEAT-001)
-**Status**: CREATIVE_COMPLETE
+**Status**: COMPLETE
+**Reflection**: memory-bank/reflection/reflection-TASK-001.md
+**Archived**: memory-bank/archive/archive-TASK-001.md
+**Completed**: 2026-06-16
 **Roadmap**: FEAT-001
 **Branch**: feature/FEAT-001-express-api-typescript
-**Worktree**: N/A
+**Worktree**: N/A (in-place build on feature branch)
 
 ## Task Description
 
@@ -298,10 +301,10 @@ Build the BanyanBoard backend foundation in 4 sequential, independently-verifiab
 
 ## Implementation Roadmap
 
-- [ ] Phase 1: Project scaffolding & config foundation — `package.json` deps, `tsconfig.json`, build/dev/start scripts, `.env.example`, `src/config/env.ts` (→ AC-VERIFY-1, AC-VERIFY-2)
-- [ ] Phase 2: Observability foundation — `src/observability/logger.ts` (structured JSON + traceId), trace-context extraction, `src/middleware/requestLogger.ts`
-- [ ] Phase 3: Express app & health slice — `src/app.ts`, `src/index.ts` (entry + SIGTERM), `src/routes/health.ts`, `src/routes/index.ts` (`/api/v1` scaffold) (→ AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-3)
-- [ ] Phase 4: Centralized error handling — `src/middleware/notFound.ts`, `src/middleware/errorHandler.ts` (→ AC-ERROR-1, AC-ERROR-2)
+- [x] Phase 1: Project scaffolding & config foundation — `package.json` deps, `tsconfig.json`, build/dev/start scripts, `.env.example`, `src/config/env.ts` (→ AC-VERIFY-1, AC-VERIFY-2) — **COMPLETE (2026-06-16)**. Note: `.env.example` deferred (blocked by `Edit(.env.*)` deny rule — needs manual creation).
+- [x] Phase 2: Observability foundation — `src/observability/logger.ts` (structured JSON + traceId), trace-context extraction, `src/middleware/requestLogger.ts` — **COMPLETE (2026-06-16)**. Added `src/observability/tracing.ts` (W3C extract + initTracing seam), `src/types/express.d.ts` (req.log/req.traceId), and `config.serviceVersion`.
+- [x] Phase 3: Express app & health slice — `src/app.ts`, `src/index.ts` (entry + SIGTERM), `src/routes/health.ts`, `src/routes/index.ts` (`/api/v1` scaffold) (→ AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-3) — **COMPLETE (2026-06-16)**. Live smoke verified startup log + /health 200; graceful shutdown verified by inspection (signal delivery untestable on Windows host; works on Linux/Docker). Lifecycle logs now carry a root traceId.
+- [x] Phase 4: Centralized error handling — `src/middleware/notFound.ts`, `src/middleware/errorHandler.ts` (→ AC-ERROR-1, AC-ERROR-2) — **COMPLETE (2026-06-16)**. Wired into createApp() as notFound → errorHandler (LAST). Live smoke confirmed JSON 404 end-to-end; no stack/message leak (dual-asserted).
 
 ## Creative Phases
 
@@ -316,15 +319,113 @@ Build the BanyanBoard backend foundation in 4 sequential, independently-verifiab
 
 ## Execution State
 
+## Archive Execution State
+
 **Build Status**: IDLE
-**Current Phase**: CREATIVE → BUILD
-**Last Completed**: CREATIVE (Architecture design — 5 decisions resolved)
+**Current Phase**: COMPLETE
+**Can Resume**: NO
+**Archive**: memory-bank/archive/archive-TASK-001.md (Mode B — Task Archive, local-merge to master)
+
+---
+
+## Reflect Execution State
+
+**Build Status**: IDLE
+**Current Phase**: REFLECT → ARCHIVE
+**Current Step**: Step 5 - Report Completion - COMPLETE
 **Can Resume**: NO
 
 ### Active Sub-Agents
-- Architecture Design: COMPLETE (2026-06-16)
+- Reflection Agent: COMPLETE — Output: memory-bank/reflection/reflection-TASK-001.md
+
+### Reflect Completed Steps
+- Step 1 Verify Prerequisites: COMPLETE (2026-06-16) — all 4 implementation phases [x], status BUILD_COMPLETE
+- Step 2 Load Complexity Context: COMPLETE (2026-06-16) — Level 3 reflection rules
+- Step 3 Reflection Agent: COMPLETE (2026-06-16) — reflection-TASK-001.md created; Task Quality: Partial Success (7/8 ACs live-evidenced), Ecosystem: Moderately Effective
+- Step 3.5 Pattern Extraction: COMPLETE (2026-06-16) — 4 learnings extracted; 0 amended, 4 created (testing-patterns, api-design, error-handling, typescript-config)
+- Step 4 Git Commit: COMPLETE (2026-06-16) — commit 644e764 on feature/FEAT-001-express-api-typescript (no remote configured; push skipped)
+
+---
+
+## Build Execution State
+
+**Build Status**: BUILD_COMPLETE (all 4 phases done)
+**Current Build**: Phase 4: Centralized error handling (TASK-001) — COMPLETE (FINAL PHASE)
+**Build Started**: 2026-06-16
+**Phase Number**: 4 of 4
+**Is Multi-Phase**: YES
+
+### Current Build Step
+**Step**: Step 11 - Phase Git Completion
+**Status**: COMPLETE
+**Completed**: 2026-06-16
+**Output**: Phase 4 committed; ALL phases complete. Task status BUILD_COMPLETE.
+
+### Phase 4 (COMPLETE — FINAL)
+- Test Writer (4 tests) → Coding → Review (APPROVED) → Docs. Suite 18/18, build clean.
+- Files: src/middleware/notFound.ts (JSON 404 + WARN log), src/middleware/errorHandler.ts (4-arg, last; 4xx→warn/5xx→error, no stack/message leak, headersSent guard); app.ts composition finalized (requestLogger→/health→/api/v1→notFound→errorHandler).
+- Live smoke: GET /api/v1/does-not-exist → 404 JSON {error,path,traceId} (AC-ERROR-1 ✓). errorHandler 500 path + server-stays-alive verified by tests (AC-ERROR-2 ✓). No info leak (dual-asserted: stack in log only, absent from body).
+- Code review APPROVED, 0 blocking. No new deps; 0 new security findings.
+
+### All Acceptance Criteria satisfied
+AC-ENTRY-1 ✓ (P3), AC-HAPPY-1 ✓ (P3), AC-HAPPY-2 ✓ (P3), AC-ERROR-1 ✓ (P4), AC-ERROR-2 ✓ (P4), AC-ERROR-3 ✓ (P3, by inspection — Windows signal caveat), AC-VERIFY-1 ✓ (clean tsc build every phase), AC-VERIFY-2 ✓ (P1, single config source).
+
+### Resumption Notes
+**Can Resume**: NO — BUILD_COMPLETE. Next: `/banyan-reflect TASK-001` then `/banyan-archive TASK-001`.
+**Reflection follow-ups**: (1) `.env.example` still needs manual creation (Edit(.env.*) deny rule, deferred all 4 phases); (2) AC-ERROR-3 graceful shutdown verified by inspection only — recommend a Linux/Docker SIGTERM smoke; (3) SEC-DEBT-1 (dev-only js-yaml advisory) tracked in projectbrief.md.
+
+### Phase 3 (COMPLETE)
+- Test Writer (3 integration tests) → Coding → Review (APPROVED_WITH_NITS) → Docs. Suite 14/14, build clean.
+- Files: src/app.ts (createApp factory), src/index.ts (entry + SIGTERM/SIGINT graceful shutdown + root-traceId lifecycle logs), src/routes/health.ts, src/routes/index.ts.
+- Live smoke: startup JSON log (AC-ENTRY-1 ✓), GET /health 200 application/json (AC-HAPPY-1 ✓), GET /api/v1 JSON (AC-HAPPY-2 ✓). Graceful shutdown (AC-ERROR-3) verified by inspection — signal delivery untestable on Windows host; correct for Linux/Docker target.
+- Orchestrator fixed NIT-1 (duplicate `service` in startup log) and NIT-2 (lifecycle logs now carry root traceId) before commit. notFound/errorHandler deferred to Phase 4 (insertion point marked in app.ts).
+
+### Resumption Notes
+**Can Resume**: NO (Phase 3 complete — awaiting human review before Phase 4)
+**Resume From**: N/A — run `/banyan-build TASK-001` for Phase 4 (Centralized error handling — final phase)
+**Notes**: `.env.example` still needs manual creation (Edit(.env.*) deny rule). Phase 4 appends notFound + errorHandler at the marked spot in app.ts → AC-ERROR-1/2.
+
+### Phase 1 (COMPLETE — committed 5a0ba60)
+- Test Writer → Coding → Review (APPROVED_WITH_NITS) → Docs. Tests 4/4, build clean.
+- Deferred: `.env.example` (Edit(.env.*) deny rule); js-yaml dev-only advisory (SEC-DEBT-1).
+
+### Phase 2 (COMPLETE)
+- Test Writer (7 tests) → Coding → Review (APPROVED) → Docs. Suite 11/11, build clean.
+- Files: src/observability/logger.ts, tracing.ts, src/middleware/requestLogger.ts, src/types/express.d.ts; env.ts +serviceVersion.
+- Orchestrator fix pre-review: removed direct `process.env` read in logger.ts (routed version through config.serviceVersion to preserve single-config-source invariant).
+- Code review: APPROVED, 0 blocking, 3 optional forward-looking nits. Security: 0 new findings, no new deps.
+
+### Resumption Notes
+**Can Resume**: NO (Phase 2 complete — awaiting human review before Phase 3)
+**Resume From**: N/A — run `/banyan-build TASK-001` for Phase 3 (Express app & health slice)
+**Notes**: `.env.example` still needs manual creation (Edit(.env.*) deny rule). requestLogger + tracing ready to wire into createApp() in Phase 3.
 
 ### Completed Steps
+- Step 0.5 Git Setup: COMPLETE (2026-06-16) - Base commit on master, feature/FEAT-001-express-api-typescript branch created (in-place, no worktree)
+- Step 0.6 Phase Gate: COMPLETE (2026-06-16) - Roadmap populated, Architecture creative phase complete
+- Step 1 Read Task Context: COMPLETE (2026-06-16) - Phase 1 of 4 identified (Level 3)
+- Step 2 Load Context: COMPLETE (2026-06-16) - Level 3 rules + architecture creative doc loaded
+- Step 3 Test Writer: COMPLETE (2026-06-16) - 4 unit tests in src/config/env.test.ts
+- Step 4 Coding Agent: COMPLETE (2026-06-16) - package.json, tsconfig.json, jest.config.js, jest.setup.ts, .nvmrc, src/config/env.ts (.env.example blocked by deny rule)
+- Step 6 Test Execution: COMPLETE (2026-06-16) - 4/4 tests pass (single config batch)
+- Step 7 Integration Verification: COMPLETE (2026-06-16) - Tests 4/4 PASS, Build PASS (dist/ + source maps), Lint N/A (no ESLint configured)
+- Step 8 Code Review: COMPLETE (2026-06-16) - APPROVED_WITH_NITS; NIT-1 (stray self-dep from npm --prefix bug) fixed; deps: 0 prod vulns, 19 dev-only moderate (js-yaml via jest) deferred LOW
+- Step 9 Documentation: COMPLETE (2026-06-16) - Seeded systemPatterns.md + techContext.md baselines
+- Step 10 Memory Bank: COMPLETE (2026-06-16) - tasks.md, progress.md, TASK-001.md updated
+- Step 11 Git Completion: COMPLETE (2026-06-16) - Phase 1 committed
+
+### Sub-Agents
+- Test Writer (build-test-writer-agent): COMPLETE - 4 tests
+- Coding Agent (build-coding-agent): COMPLETE - scaffolding + env.ts
+- Code Reviewer (build-code-reviewer-agent): COMPLETE - APPROVED_WITH_NITS
+- Documentation Agent (build-documentation-agent): COMPLETE - patterns seeded
+
+### Resumption Notes
+**Can Resume**: NO (Phase 1 complete — awaiting human review before Phase 2)
+**Resume From**: N/A — run `/banyan-build TASK-001` for Phase 2 (Observability foundation)
+**Notes**: `.env.example` still needs manual creation (blocked by `Edit(.env.*)` deny rule). Dev-only js-yaml advisory (GHSA-h67p-54hq-rp68) tracked as LOW-priority deferred toolchain bump.
+
+### Prior Phases
 - PLAN: Spec Writer Agent (Sonnet) drafted specification — human approved 2026-06-16
-- PLAN: Implementation roadmap (4 phases), test strategy (~14 tests), and Architecture creative phase flagged
+- PLAN: Implementation roadmap (4 phases), test strategy (~14 tests), Architecture creative phase flagged
 - CREATIVE: Architecture Design (Opus) — 5 decisions resolved, output: `memory-bank/creative/TASK-001-express-api-architecture.md` (2026-06-16)
