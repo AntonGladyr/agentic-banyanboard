@@ -14,3 +14,13 @@ Chronological record of pattern extraction and consolidation events from task re
 
 ### systemPatterns.md Updates
 - None (all 4 learnings are coding practices, not novel architecture patterns)
+
+---
+
+## 2026-06-16 - Consolidation (during TASK-001 archive)
+
+- Files before: 4, Files after: 4
+- Merged: 0 files (all 4 topics distinct — no >50% overlap)
+- Expired: 0 bullets (all created today)
+- Promoted: 0 files (evidence_count 1 < promotion threshold 3)
+- Pruned: 0 excess bullets (1 bullet/file < max 15)

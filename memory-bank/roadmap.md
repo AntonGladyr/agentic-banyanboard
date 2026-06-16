@@ -15,7 +15,7 @@
 - **Target Date**: TBD
 - **Description**: Project foundation milestone. Establishes the core Express API service written in TypeScript, including project structure, build tooling, and baseline observability per project standards.
 - **Features**:
-  - FEAT-001: Express API with TypeScript (in_progress) [Level 3]
+  - FEAT-001: Express API with TypeScript (complete) [Level 3]
 
 ### next (Planning)
 
@@ -29,10 +29,10 @@
 ### FEAT-001: Express API with TypeScript
 
 - **Version**: v0.1.0
-- **Status**: planned
+- **Status**: complete
 - **Priority**: high
 - **Complexity**: Level 3
 - **Description**: Foundation milestone establishing a TypeScript-based Express API. Covers project scaffolding (tsconfig, build/run scripts), the Express server and middleware structure, configuration via environment variables (12-Factor), and baseline OpenTelemetry observability (structured logging, trace context). Serves as the architectural base for all subsequent features.
-- **Linked Tasks**: None
+- **Linked Tasks**: TASK-001 (complete — archived 2026-06-16)
 - **Branch**: feature/FEAT-001-express-api-typescript
 - **Created**: 2026-06-16

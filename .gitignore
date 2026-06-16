@@ -2,6 +2,9 @@
 .agent-logs/
 .claude-logs/
 
+# Banyan Memory Bank plugin source (tooling, not project code)
+banyan-memory-bank/
+
 # Node modules and dependencies
 node_modules/
 package-lock.json

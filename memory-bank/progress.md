@@ -1,5 +1,16 @@
 # Progress
 
+---
+
+## Task Archive: TASK-001
+
+**Task**: Express API with TypeScript (BanyanBoard backend foundation)
+**Status**: ✅ ARCHIVED
+**Date**: 2026-06-16
+**Archive**: `memory-bank/archive/archive-TASK-001.md`
+
+---
+
 ## Implementation History
 
 | Date | Task | Phase | Notes |
