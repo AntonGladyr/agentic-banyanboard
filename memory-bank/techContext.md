@@ -15,7 +15,10 @@
 - **PostgreSQL**: stub this phase. `DATABASE_URL` is configurable via env but NOT connected; pg client added by a downstream DB task.
 
 ### API & Communication
-- **REST API**: Express-based. `/health` probe and `/api/v1` router scaffold land in Phase 3 (app composition phase). No endpoints wired in Phase 1.
+- **REST API**: Express-based; all responses JSON. Realized endpoints (Phase 3):
+  - `GET /health` → 200 JSON health probe (`{status, timestamp}`)
+  - `GET /api/v1` → 200 JSON scaffold root (`{api, status}`); domain routers mount under `/api/v1` as added
+  - JSON 404/500 error responses are pending (Phase 4)
 
 ### Development Tools
 - **Build**: `tsc` (TypeScript compiler); `outDir: dist`, `rootDir: src`, `sourceMap: true`, test files excluded from the production build
@@ -48,8 +51,8 @@ See `memory-bank/creative/TASK-001-express-api-architecture.md` § Observability
 |---------|---------|
 | `npm install` | Install dependencies |
 | `npm run build` | Compile TypeScript to `dist/` via `tsc` |
-| `npm run dev` | Run with hot reload (`tsx watch src/index.ts`) |
-| `npm start` | Run the compiled server (`node dist/index.js`) |
+| `npm run dev` | Boot a real server with hot reload (`tsx watch src/index.ts`); listens on `config.port`, graceful SIGTERM/SIGINT shutdown |
+| `npm start` | Run the compiled server (`node dist/index.js`); entry `src/index.ts`, graceful shutdown |
 | `npm test` | Run the Jest test suite |
 | `npm run test:watch` | Run Jest in watch mode |
 
@@ -75,7 +78,7 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 
 ## Component Structure
 
-[Seeded in `systemPatterns.md` § Architecture Overview. Phase 2 added `src/observability/` (logger, tracing), `src/middleware/requestLogger.ts`, and `src/types/express.d.ts`. Source tree to expand as Phases 3–4 add `src/routes`, `src/app.ts`, `src/index.ts`, and the remaining middleware.]
+[Seeded in `systemPatterns.md` § Architecture Overview. Phase 2 added `src/observability/` (logger, tracing), `src/middleware/requestLogger.ts`, and `src/types/express.d.ts`. Phase 3 added `src/app.ts` (`createApp()` factory), `src/index.ts` (process entry + graceful shutdown), and `src/routes/` (`health.ts`, `index.ts`). Source tree expands as Phase 4 adds the `notFound`/`errorHandler` middleware.]
 
 ## External Services
 

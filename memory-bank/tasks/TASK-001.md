@@ -300,7 +300,7 @@ Build the BanyanBoard backend foundation in 4 sequential, independently-verifiab
 
 - [x] Phase 1: Project scaffolding & config foundation — `package.json` deps, `tsconfig.json`, build/dev/start scripts, `.env.example`, `src/config/env.ts` (→ AC-VERIFY-1, AC-VERIFY-2) — **COMPLETE (2026-06-16)**. Note: `.env.example` deferred (blocked by `Edit(.env.*)` deny rule — needs manual creation).
 - [x] Phase 2: Observability foundation — `src/observability/logger.ts` (structured JSON + traceId), trace-context extraction, `src/middleware/requestLogger.ts` — **COMPLETE (2026-06-16)**. Added `src/observability/tracing.ts` (W3C extract + initTracing seam), `src/types/express.d.ts` (req.log/req.traceId), and `config.serviceVersion`.
-- [ ] Phase 3: Express app & health slice — `src/app.ts`, `src/index.ts` (entry + SIGTERM), `src/routes/health.ts`, `src/routes/index.ts` (`/api/v1` scaffold) (→ AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-3)
+- [x] Phase 3: Express app & health slice — `src/app.ts`, `src/index.ts` (entry + SIGTERM), `src/routes/health.ts`, `src/routes/index.ts` (`/api/v1` scaffold) (→ AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-3) — **COMPLETE (2026-06-16)**. Live smoke verified startup log + /health 200; graceful shutdown verified by inspection (signal delivery untestable on Windows host; works on Linux/Docker). Lifecycle logs now carry a root traceId.
 - [ ] Phase 4: Centralized error handling — `src/middleware/notFound.ts`, `src/middleware/errorHandler.ts` (→ AC-ERROR-1, AC-ERROR-2)
 
 ## Creative Phases
@@ -318,17 +318,28 @@ Build the BanyanBoard backend foundation in 4 sequential, independently-verifiab
 
 ## Build Execution State
 
-**Build Status**: COMPLETE (Phase 2)
-**Current Build**: Phase 2: Observability foundation (TASK-001) — COMPLETE
+**Build Status**: COMPLETE (Phase 3)
+**Current Build**: Phase 3: Express app & health slice (TASK-001) — COMPLETE
 **Build Started**: 2026-06-16
-**Phase Number**: 2 of 4
+**Phase Number**: 3 of 4
 **Is Multi-Phase**: YES
 
 ### Current Build Step
 **Step**: Step 11 - Phase Git Completion
 **Status**: COMPLETE
 **Completed**: 2026-06-16
-**Output**: Phase 2 committed to feature branch; stopped for human review.
+**Output**: Phase 3 committed to feature branch; stopped for human review.
+
+### Phase 3 (COMPLETE)
+- Test Writer (3 integration tests) → Coding → Review (APPROVED_WITH_NITS) → Docs. Suite 14/14, build clean.
+- Files: src/app.ts (createApp factory), src/index.ts (entry + SIGTERM/SIGINT graceful shutdown + root-traceId lifecycle logs), src/routes/health.ts, src/routes/index.ts.
+- Live smoke: startup JSON log (AC-ENTRY-1 ✓), GET /health 200 application/json (AC-HAPPY-1 ✓), GET /api/v1 JSON (AC-HAPPY-2 ✓). Graceful shutdown (AC-ERROR-3) verified by inspection — signal delivery untestable on Windows host; correct for Linux/Docker target.
+- Orchestrator fixed NIT-1 (duplicate `service` in startup log) and NIT-2 (lifecycle logs now carry root traceId) before commit. notFound/errorHandler deferred to Phase 4 (insertion point marked in app.ts).
+
+### Resumption Notes
+**Can Resume**: NO (Phase 3 complete — awaiting human review before Phase 4)
+**Resume From**: N/A — run `/banyan-build TASK-001` for Phase 4 (Centralized error handling — final phase)
+**Notes**: `.env.example` still needs manual creation (Edit(.env.*) deny rule). Phase 4 appends notFound + errorHandler at the marked spot in app.ts → AC-ERROR-1/2.
 
 ### Phase 1 (COMPLETE — committed 5a0ba60)
 - Test Writer → Coding → Review (APPROVED_WITH_NITS) → Docs. Tests 4/4, build clean.
