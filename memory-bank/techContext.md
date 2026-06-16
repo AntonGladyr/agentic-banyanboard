@@ -12,7 +12,7 @@
 - **Express**: 4 (`^4.21.2`) — HTTP API framework (app factory + routes scaffolded in later phases)
 
 ### Data Layer
-- **PostgreSQL**: stub this phase. `DATABASE_URL` is configurable via env but NOT connected; pg client added by a downstream DB task.
+- **PostgreSQL**: connection layer landed in TASK-002 Phase 1. `pg` (`^8.21.0`) + `@types/pg` (dev) added. `src/db/pool.ts` is a lazily-initialized singleton `pg.Pool` module exporting `getPool()`, `closePool()`, `checkConnection()`, and `checkConnectionWithRetry()` (bounded non-blocking startup retry with capped exponential backoff + a non-fatal `pool.on('error')` handler — see `creative/TASK-002-connection-resilience.md`, Option 2). Config is read only via `config.databaseUrl` (single config source); the DSN/password is never logged. **Not yet wired into `src/index.ts`** (lifecycle wiring is TASK-002 Phase 3) and no compose/`.env` files yet (Phase 2). Schema/migrations/ORM remain out of scope (future domain features).
 
 ### API & Communication
 - **REST API**: Express-based; all responses JSON (including errors — never Express default HTML). Realized endpoints (Phase 3):
