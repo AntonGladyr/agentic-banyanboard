@@ -2,6 +2,15 @@
 
 ---
 
+## Task Archive: TASK-003
+
+**Task**: Health check endpoint with tests
+**Status**: ✅ ARCHIVED
+**Date**: 2026-06-17
+**Archive**: `memory-bank/archive/archive-TASK-003.md`
+
+---
+
 ## Task Archive: TASK-002
 
 **Task**: Docker Compose for PostgreSQL

@@ -17,7 +17,7 @@
 - **Features**:
   - FEAT-001: Express API with TypeScript (complete) [Level 3]
   - FEAT-002: Docker Compose for PostgreSQL (complete) [Level 2]
-  - FEAT-003: Health check endpoint with tests (in_progress) [Level 2]
+  - FEAT-003: Health check endpoint with tests (complete) [Level 2]
 
 ### next (Planning)
 
@@ -53,11 +53,11 @@
 ### FEAT-003: Health check endpoint with tests
 
 - **Version**: v0.1.0
-- **Status**: in_progress
+- **Status**: complete
 - **Priority**: high
 - **Complexity**: Level 2
 - **Description**: Add a `/health` endpoint to the Express API that reports service liveness and verifies PostgreSQL connectivity (DB readiness). Returns structured JSON status with appropriate HTTP codes (200 healthy / 503 unhealthy) and includes unit and integration tests. Depends on FEAT-002 (PostgreSQL connection module).
 - **Dependencies**: FEAT-002 (Docker Compose for PostgreSQL)
-- **Linked Tasks**: TASK-003
+- **Linked Tasks**: TASK-003 (complete — archived 2026-06-17)
 - **Branch**: feature/FEAT-003-health-check-endpoint
 - **Created**: 2026-06-16
