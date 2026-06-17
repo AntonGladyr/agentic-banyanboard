@@ -16,7 +16,7 @@
 
 ### API & Communication
 - **REST API**: Express-based; all responses JSON (including errors — never Express default HTML). Realized endpoints (Phase 3):
-  - `GET /health` → 200 JSON health probe (`{status, timestamp}`)
+  - `GET /health` → liveness + PostgreSQL readiness probe (FEAT-003): 200 `{status:"ok", db:"ok", timestamp}` when reachable, 503 `{status:"error", db:"error", timestamp}` when unreachable, 200 `{status:"ok", db:"unconfigured", timestamp}` when `DATABASE_URL` is unset. Readiness via `checkConnection()`; DB errors logged server-side only.
   - `GET /api/v1` → 200 JSON scaffold root (`{api, status}`); domain routers mount under `/api/v1` as added
 - **Error responses** (Phase 4, realized): centralized terminal middleware returns JSON with a generic label + `traceId` for client correlation (no internal detail leaked):
   - Unmatched route → `404 {error:'Not Found', path, traceId}`
