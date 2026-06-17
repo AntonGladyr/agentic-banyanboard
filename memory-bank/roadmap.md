@@ -16,7 +16,7 @@
 - **Description**: Project foundation milestone. Establishes the core Express API service written in TypeScript, including project structure, build tooling, and baseline observability per project standards.
 - **Features**:
   - FEAT-001: Express API with TypeScript (complete) [Level 3]
-  - FEAT-002: Docker Compose for PostgreSQL (planned) [Level 2]
+  - FEAT-002: Docker Compose for PostgreSQL (complete) [Level 2]
   - FEAT-003: Health check endpoint with tests (planned) [Level 2]
 
 ### next (Planning)
@@ -42,11 +42,11 @@
 ### FEAT-002: Docker Compose for PostgreSQL
 
 - **Version**: v0.1.0
-- **Status**: planned
+- **Status**: complete
 - **Priority**: high
 - **Complexity**: Level 2
 - **Description**: Add a Docker Compose service for PostgreSQL to support local development and dev/prod parity. Includes the compose definition, environment-variable-driven connection config (12-Factor), and a database connection module wired into the Express API.
-- **Linked Tasks**: TASK-002 (planning)
+- **Linked Tasks**: TASK-002 (complete — archived 2026-06-16)
 - **Branch**: feature/FEAT-002-docker-compose-postgresql
 - **Created**: 2026-06-16
 
