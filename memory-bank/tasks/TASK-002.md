@@ -1,11 +1,13 @@
 # TASK-002: Docker Compose for PostgreSQL
 
 **Complexity**: Level 2
-**Status**: REFLECTION_COMPLETE
+**Status**: COMPLETE
 **Roadmap**: FEAT-002
 **Branch**: feature/FEAT-002-docker-compose-postgresql
 **Worktree**: N/A
 **Reflection**: memory-bank/reflection/reflection-TASK-002.md
+**Archived**: memory-bank/archive/archive-TASK-002.md
+**Completed**: 2026-06-16
 
 ## Task Description
 
@@ -371,8 +373,8 @@ See `## Specification` above for full acceptance criteria (AC-COMPOSE-1 through 
 ## Execution State
 
 **Build Status**: IDLE
-**Current Phase**: REFLECT → ARCHIVE
-**Current Step**: REFLECTION_COMPLETE — reflection doc + learned rules committed; ready for /banyan-archive
+**Current Phase**: COMPLETE
+**Current Step**: ARCHIVED — task archived to memory-bank/archive/archive-TASK-002.md; merged to master
 **Step Started**: 2026-06-16
 **Reflection Document**: memory-bank/reflection/reflection-TASK-002.md
 **Can Resume**: NO

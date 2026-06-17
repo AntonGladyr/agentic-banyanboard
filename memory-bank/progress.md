@@ -2,6 +2,15 @@
 
 ---
 
+## Task Archive: TASK-002
+
+**Task**: Docker Compose for PostgreSQL
+**Status**: ✅ ARCHIVED
+**Date**: 2026-06-16
+**Archive**: `memory-bank/archive/archive-TASK-002.md`
+
+---
+
 ## Task Archive: TASK-001
 
 **Task**: Express API with TypeScript (BanyanBoard backend foundation)
