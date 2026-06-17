@@ -45,3 +45,13 @@ Chronological record of pattern extraction and consolidation events from task re
 - Expired: 0 bullets (all created/amended today, < 90-day window)
 - Promoted: 0 files (testing-patterns evidence_count 2 < promotion threshold 3; all others 1)
 - Pruned: 0 excess bullets (max 2 bullets/file < max 15)
+
+---
+
+## 2026-06-17 - TASK-003 Reflection
+
+### Extracted Patterns
+- **testing-patterns** → amended `agent-rules/_learned/testing-patterns.md` (evidence count: 3) — module-scope `mock`-prefixed `jest.fn` survives `jest.resetModules()` when driving branches in a frozen, import-time env-reading config. **Promoted low → medium** (evidence_count reached promotion threshold 3).
+
+### systemPatterns.md Updates
+- None (the learning is a coding/test-harness practice, not a novel architecture pattern)
