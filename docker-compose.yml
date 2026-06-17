@@ -1,0 +1,37 @@
+# docker-compose.yml — local development database for BanyanBoard (TASK-002 Phase 2).
+#
+# Provides the PostgreSQL half of the "clone repo -> docker compose up -> open
+# localhost:3000" quick-start. The Express app itself runs on the host (npm run dev)
+# and connects to this container over the published 5432 port via DATABASE_URL.
+# An `api` service / Dockerfile is intentionally out of scope for FEAT-002.
+#
+# Configuration is 12-Factor: POSTGRES_* values come from the project-root `.env`
+# file (see .env.example). The compose defaults below mirror the example DSN
+# postgres://banyan:banyan@localhost:5432/banyanboard so a fresh clone works with
+# zero edits.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    # Defaults match .env.example; the project-root `.env` overrides them.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-banyan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-banyan}
+      POSTGRES_DB: ${POSTGRES_DB:-banyanboard}
+    ports:
+      # Host-published so the app running via `npm run dev` can connect.
+      - "5432:5432"
+    volumes:
+      # Named volume persists data across `docker compose down` / `up` cycles.
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # $$ escapes the var so it is expanded inside the container, not by compose.
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  postgres_data:
