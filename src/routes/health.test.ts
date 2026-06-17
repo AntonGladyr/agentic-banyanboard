@@ -132,5 +132,66 @@ describe('health slice (integration)', () => {
         expect(typeof entry.durationMs).toBe('number');
       });
     });
+
+    /**
+     * AC-DB-UNCONFIGURED-1 — when DATABASE_URL is unset, /health is a healthy LIVENESS
+     * response (`200`, `db:"unconfigured"`) and the DB seam is never touched (so we never hit
+     * pool.ts's `throw new Error('DATABASE_URL is not set')`).
+     *
+     * This is verified deterministically (independent of the ambient env) via `jest.doMock` +
+     * `jest.resetModules()`: we delete DATABASE_URL, mock the pool module so `getPool` /
+     * `checkConnection` are observable jest.fns, and require a FRESH app graph so `config`
+     * re-reads the env with DATABASE_URL absent.
+     */
+    describe('DB readiness: unconfigured (AC-DB-UNCONFIGURED-1)', () => {
+      const ORIGINAL_DB_URL = process.env.DATABASE_URL;
+
+      afterEach(() => {
+        jest.dontMock('../db/pool');
+        jest.resetModules();
+        if (ORIGINAL_DB_URL === undefined) {
+          delete process.env.DATABASE_URL;
+        } else {
+          process.env.DATABASE_URL = ORIGINAL_DB_URL;
+        }
+      });
+
+      it('returns 200 {status:"ok", db:"unconfigured", timestamp} and never calls getPool()/checkConnection() when DATABASE_URL is unset', async () => {
+        // Arrange: DATABASE_URL absent so config.databaseUrl is undefined in the fresh graph.
+        delete process.env.DATABASE_URL;
+        jest.resetModules();
+
+        const getPoolMock = jest.fn(() => {
+          throw new Error('getPool() must not be called on the unconfigured path');
+        });
+        const checkConnectionMock = jest.fn();
+        jest.doMock('../db/pool', () => ({
+          __esModule: true,
+          getPool: getPoolMock,
+          checkConnection: checkConnectionMock,
+        }));
+
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { createApp: freshCreateApp } = require('../app') as typeof import('../app');
+        const freshApp = freshCreateApp();
+
+        // Act
+        const res = await request(freshApp).get('/health');
+
+        // Assert: healthy liveness with db:"unconfigured" and an ISO-8601 timestamp.
+        expect(res.status).toBe(200);
+        expect(res.headers['content-type']).toMatch(/application\/json/);
+        expect(res.body).toEqual({
+          status: 'ok',
+          db: 'unconfigured',
+          timestamp: expect.any(String),
+        });
+        expect(new Date(res.body.timestamp).toISOString()).toBe(res.body.timestamp);
+
+        // The DB seam is never touched on the unconfigured path.
+        expect(getPoolMock).not.toHaveBeenCalled();
+        expect(checkConnectionMock).not.toHaveBeenCalled();
+      });
+    });
   });
 });

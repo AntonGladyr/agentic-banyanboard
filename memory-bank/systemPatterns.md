@@ -100,7 +100,7 @@ src/
 
 ## API Conventions
 
-[Phase 3, realized.] REST over Express; all responses JSON. `GET /health` → 200 `{"status":"ok","timestamp":"<ISO8601>"}`. Versioned API under `/api/v1`, mounted as its own router (`src/routes/index.ts`) with a stub `GET /` → 200 `{"api":"v1","status":"ok"}` so `/api/v1` always returns JSON. Domain routers colocate under `/api/v1` as they are added. *JSON-only error responses (404/500) are appended in Phase 4 — see § Error Handling Conventions.*
+[Phase 3, realized; readiness extended in FEAT-003.] REST over Express; all responses JSON. `GET /health` reports liveness AND PostgreSQL readiness via three contracts (all `application/json`, all with an ISO-8601 `timestamp`): DB reachable → 200 `{"status":"ok","db":"ok","timestamp"}`; DB unreachable → 503 `{"status":"error","db":"error","timestamp"}`; `DATABASE_URL` unset → 200 `{"status":"ok","db":"unconfigured","timestamp"}` (live, readiness N/A — guarded by `config.databaseUrl === undefined` so the pool is never touched). Readiness is probed with `checkConnection()` (acquire + release a client); the 503 path logs the DB error server-side via `req.log` only — never in the body. Versioned API under `/api/v1`, mounted as its own router (`src/routes/index.ts`) with a stub `GET /` → 200 `{"api":"v1","status":"ok"}` so `/api/v1` always returns JSON. Domain routers colocate under `/api/v1` as they are added. *JSON-only error responses (404/500) are appended in Phase 4 — see § Error Handling Conventions.*
 
 ## Last Refreshed
 
