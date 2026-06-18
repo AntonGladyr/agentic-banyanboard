@@ -2,7 +2,7 @@
 
 ## Summary
 
-- **Total Features**: 3
+- **Total Features**: 5
 - **Active Version**: None
 - **Released Versions**: 0
 - **Planning Versions**: 2 (v0.1.0, next)
@@ -24,7 +24,9 @@
 - **Status**: planning
 - **Target Date**: TBD
 - **Description**: Backlog for future features not yet assigned to a release.
-- **Features**: None
+- **Features**:
+  - FEAT-005: Board model with CRUD endpoints (complete) [Level 2]
+  - FEAT-004: Card model with CRUD endpoints (planned) [Level 2]
 
 ## Features
 
@@ -61,3 +63,26 @@
 - **Linked Tasks**: TASK-003 (complete — archived 2026-06-17)
 - **Branch**: feature/FEAT-003-health-check-endpoint
 - **Created**: 2026-06-16
+
+### FEAT-004: Card model with CRUD endpoints
+
+- **Version**: next
+- **Status**: planned
+- **Priority**: high
+- **Complexity**: Level 2
+- **Description**: Add a Card domain model with full CRUD REST endpoints (create, read one, list, update, delete) on the Express API. Cards have a foreign key to Board (`board_id`) enforcing referential integrity. Includes request input validation (body and params), structured error responses, environment-driven persistence via the existing PostgreSQL connection module, and unit + integration tests. Follows the layered Express + Postgres patterns established in FEAT-001/002/003.
+- **Dependencies**: FEAT-005 (Board model — required for the `board_id` foreign key)
+- **Linked Tasks**: None
+- **Branch**: feature/FEAT-004-card-model-crud
+- **Created**: 2026-06-17
+
+### FEAT-005: Board model with CRUD endpoints
+
+- **Version**: next
+- **Status**: complete
+- **Priority**: high
+- **Complexity**: Level 2
+- **Description**: Add a Board domain model with full CRUD REST endpoints (create, read one, list, update, delete) on the Express API. Establishes the `boards` table that Cards reference via foreign key. Includes request input validation, structured error responses, environment-driven persistence via the existing PostgreSQL connection module, and unit + integration tests. Prerequisite for FEAT-004 (Card model). Follows the layered Express + Postgres patterns established in FEAT-001/002/003.
+- **Linked Tasks**: TASK-004 (complete — archived 2026-06-17)
+- **Branch**: feature/FEAT-005-board-model-crud
+- **Created**: 2026-06-17

@@ -12,12 +12,15 @@
 - **Express**: 4 (`^4.21.2`) — HTTP API framework (app factory + routes scaffolded in later phases)
 
 ### Data Layer
-- **PostgreSQL**: connection layer landed in TASK-002 Phase 1. `pg` (`^8.21.0`) + `@types/pg` (dev) added. `src/db/pool.ts` is a lazily-initialized singleton `pg.Pool` module exporting `getPool()`, `closePool()`, `checkConnection()`, and `checkConnectionWithRetry()` (bounded non-blocking startup retry with capped exponential backoff + a non-fatal `pool.on('error')` handler — see `creative/TASK-002-connection-resilience.md`, Option 2). Config is read only via `config.databaseUrl` (single config source); the DSN/password is never logged. **Not yet wired into `src/index.ts`** (lifecycle wiring is TASK-002 Phase 3) and no compose/`.env` files yet (Phase 2). Schema/migrations/ORM remain out of scope (future domain features).
+- **PostgreSQL**: connection layer landed in TASK-002 Phase 1. `pg` (`^8.21.0`) + `@types/pg` (dev) added. `src/db/pool.ts` is a lazily-initialized singleton `pg.Pool` module exporting `getPool()`, `closePool()`, `checkConnection()`, and `checkConnectionWithRetry()` (bounded non-blocking startup retry with capped exponential backoff + a non-fatal `pool.on('error')` handler — see `creative/TASK-002-connection-resilience.md`, Option 2). Config is read only via `config.databaseUrl` (single config source); the DSN/password is never logged. **Not yet wired into `src/index.ts`** (lifecycle wiring is TASK-002 Phase 3) and no compose/`.env` files yet (Phase 2).
+
+- **Schema migrations**: `node-pg-migrate` (`^7.9.1`) is the canonical schema-evolution tool as of FEAT-005 (TASK-004 Phase 1). Migrations are versioned JS files in `migrations/` (CommonJS, outside `src/` so the TS build does not touch them), applied via npm scripts driven by `DATABASE_URL` (12-Factor — no hardcoded DSN). The runner tracks applied migrations in a `pgmigrations` table. First migration creates the `boards` table (`id`, `name`, `description`, `created_at`, `updated_at`). ORM remains out of scope (raw parameterized `pg` queries).
 
 ### API & Communication
 - **REST API**: Express-based; all responses JSON (including errors — never Express default HTML). Realized endpoints (Phase 3):
   - `GET /health` → liveness + PostgreSQL readiness probe (FEAT-003): 200 `{status:"ok", db:"ok", timestamp}` when reachable, 503 `{status:"error", db:"error", timestamp}` when unreachable, 200 `{status:"ok", db:"unconfigured", timestamp}` when `DATABASE_URL` is unset. Readiness via `checkConnection()`; DB errors logged server-side only.
   - `GET /api/v1` → 200 JSON scaffold root (`{api, status}`); domain routers mount under `/api/v1` as added
+  - `/api/v1/boards` → Board CRUD (FEAT-005 / TASK-004): `POST` create→201, `GET` list→200 (`[]` when empty), `GET /:id` read→200/404, `PATCH /:id` update→200/404/400, `DELETE /:id`→204/404. Input validated before any DB call (name required/≤255, `:id` positive integer, PATCH ≥1 field); `express.json()` is scoped to the boards router. Persistence via the `boards` table (`src/db/boards.ts`, parameterized) created by the Phase-1 migration.
 - **Error responses** (Phase 4, realized): centralized terminal middleware returns JSON with a generic label + `traceId` for client correlation (no internal detail leaked):
   - Unmatched route → `404 {error:'Not Found', path, traceId}`
   - Carried 4xx client error → that status with `{error:<fixed label>, path, traceId}`
@@ -59,6 +62,9 @@ See `memory-bank/creative/TASK-001-express-api-architecture.md` § Observability
 | `npm start` | Run the compiled server (`node dist/index.js`); entry `src/index.ts`, graceful shutdown |
 | `npm test` | Run the Jest test suite |
 | `npm run test:watch` | Run Jest in watch mode |
+| `npm run migrate` | Apply pending DB migrations (`node-pg-migrate up`); reads `DATABASE_URL` |
+| `npm run migrate:down` | Revert the most recent migration (`node-pg-migrate down`) |
+| `npm run migrate:create -- <name>` | Scaffold a new timestamped JS migration in `migrations/` |
 
 ## Configuration Variables
 
