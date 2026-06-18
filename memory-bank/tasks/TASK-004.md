@@ -360,7 +360,7 @@ Implications for the plan:
 ## Implementation Roadmap
 
 - [x] **Phase 1: Migration tooling + `boards` table.** Add `node-pg-migrate` dependency; add `migrate` / `migrate:down` / `migrate:create` npm scripts driven by `DATABASE_URL` (12-Factor, no hardcoded DSN); author the first migration creating the `boards` table per the spec schema (`id`, `name`, `description`, `created_at`, `updated_at`). Document the commands in `techContext.md`. Verify up/down against the local Docker Postgres. ✅ COMPLETE (2026-06-17) — `node-pg-migrate@^7.9.1`; migration `migrations/1781743422435_create-boards-table.js`; up→down→up verified against Docker Postgres (table shape matches spec exactly); build + 38 tests green.
-- [ ] **Phase 2: Board data-access module + input validation.** Add `src/db/boards.ts` (or `src/models/board.ts`) with parameterized query functions (`create`, `list`, `findById`, `update`, `delete`) using `getPool()`. Add `src/validation/board.ts` with `validateCreate`, `validateUpdate`, and `validateId` returning status-400 errors on failure. Unit-test validation (Phase 2 tests).
+- [x] **Phase 2: Board data-access module + input validation.** Add `src/db/boards.ts` (or `src/models/board.ts`) with parameterized query functions (`create`, `list`, `findById`, `update`, `delete`) using `getPool()`. Add `src/validation/board.ts` with `validateCreate`, `validateUpdate`, and `validateId` returning status-400 errors on failure. Unit-test validation (Phase 2 tests). ✅ COMPLETE (2026-06-17) — `src/db/boards.ts` (create/list/findById/update/remove, all parameterized; returns Board/null/boolean), `src/validation/board.ts` (validateCreate/validateUpdate/validateId throwing `HttpError` status 400), `src/errors.ts` (shared `HttpError` + `badRequest`/`notFoundError` factories, recognized by errorHandler via `.status`), `src/validation/board.test.ts` (15 unit tests). Build PASS; full suite 53/53.
 - [ ] **Phase 3: Board CRUD routes + registration + integration tests.** Add `src/routes/boards.ts` implementing the five endpoints (async handlers, `req.log` structured logging, validation-before-DB, `next(err)` on failure); register via `apiRouter.use('/boards', boardsRouter)` in `src/routes/index.ts`. Integration tests covering all remaining ACs. This phase delivers the complete entry-to-success flow.
 
 ### Observability Requirements
@@ -383,33 +383,36 @@ Implications for the plan:
 
 ## Build Execution State
 
-**Build Status**: COMPLETE (Phase 1 of 3)
-**Current Build**: Phase 1: Migration tooling + `boards` table (TASK-004) — COMPLETE
+**Build Status**: COMPLETE (Phase 2 of 3)
+**Current Build**: Phase 2: Board data-access module + input validation (TASK-004) — COMPLETE
 **Build Started**: 2026-06-17
-**Phase Number**: 1 of 3
+**Phase Number**: 2 of 3
 **Is Multi-Phase**: YES
 
 ### Current Build Step
-**Step**: Phase 1 complete — awaiting human review before Phase 2
+**Step**: Phase 2 complete — awaiting human review before Phase 3
 **Status**: COMPLETE
 **Completed**: 2026-06-17
-**Output**: node-pg-migrate@^7.9.1 added; migrate/migrate:down/migrate:create scripts; `migrations/1781743422435_create-boards-table.js`; techContext.md documented; up/down/up verified vs Docker Postgres; build + 38 tests green.
+**Output**: `src/errors.ts` (HttpError + badRequest/notFoundError), `src/validation/board.ts` (validateCreate/validateUpdate/validateId), `src/db/boards.ts` (create/list/findById/update/remove — parameterized), `src/validation/board.test.ts` (15 unit tests). Build PASS (tsc clean); full suite 53/53 (was 38; +15).
 
 ### Completed Steps
-- Step 0.5 Git Setup: COMPLETE (2026-06-17) — branch `feature/FEAT-005-board-model-crud` created from master (no worktree; Worktree=N/A)
+- Step 0.5 Git Setup: COMPLETE (2026-06-17) — branch `feature/FEAT-005-board-model-crud` (no worktree; Worktree=N/A)
 - Step 0.6 Phase Gate: COMPLETE — Implementation Roadmap populated; no creative phases required (Level 2)
-- Step 1 Read Task Context: COMPLETE — Phase 1 of 3 identified
-- Step 2 Load Context: COMPLETE — Level 2 implementation rules
-- Phase 1 Implementation: COMPLETE — dependency + scripts + migration authored
-- Phase 1 Verification: COMPLETE — migrate up→down→up against Docker Postgres; `\d boards` matches spec; build PASS; tests 38/38 PASS
+- Phase 1 Implementation + Verification: COMPLETE (2026-06-17) — migration tooling + boards table; 38/38 tests
+- Step 1 Read Task Context: COMPLETE (2026-06-17) — Phase 2 of 3 identified
+- Step 2 Load Context: COMPLETE (2026-06-17) — Level 2 implementation rules
+- Phase 2 Test Writer (TDD): COMPLETE (2026-06-17) — 15 validation unit tests authored first
+- Phase 2 Implementation: COMPLETE (2026-06-17) — errors.ts + validation/board.ts + db/boards.ts
+- Phase 2 Integration Verification: COMPLETE (2026-06-17) — full suite 53/53, build PASS (tsc clean)
+- Phase 2 Code Review (self): COMPLETE (2026-06-17) — parameterized queries (SQLi-safe), zero console.*, HttpError→errorHandler integration; 0 blocking
 
 ### Sub-Agents
-(none — Phase 1 is infra tooling; orchestrator implements directly)
+(none — focused Level 2 phase; orchestrator implements directly with TDD discipline, mirroring Phase 1)
 
 ### Resumption Notes
 **Can Resume**: N/A (phase complete — human review gate)
-**Resume From**: Phase 2 (next `/banyan-build TASK-004`)
-**Notes**: Docker Postgres healthy on :5432. node-pg-migrate (Approach 2). JS migration files in `migrations/`. boards table currently applied in dev DB.
+**Resume From**: Phase 3 (next `/banyan-build TASK-004`)
+**Notes**: Phase 3 = `src/routes/boards.ts` (5 endpoints; async handlers, req.log, validate-before-DB, next(err)) consuming `src/validation/board.ts` + `src/db/boards.ts`; register `apiRouter.use('/boards', boardsRouter)` in `src/routes/index.ts`; integration tests `src/routes/boards.test.ts` (AC-ENTRY-1, AC-HAPPY-1..5, AC-ERROR-1..4, AC-OBS-1/2) via mocked `getPool().query` + supertest. Use `notFoundError(...)` from `src/errors.ts` for 404s. Validators throw `HttpError`; wrap handler bodies in try/catch → next(err).
 
 ### Prior State (PLAN)
 - PLAN: Spec Writer Agent drafted specification (Sonnet)
