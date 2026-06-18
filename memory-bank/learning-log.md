@@ -86,3 +86,13 @@ Chronological record of pattern extraction and consolidation events from task re
 - Expired: 0 bullets (all created/amended within the 90-day window)
 - Promoted: 0 files (testing-patterns already medium; api-design evidence_count 2 < threshold 3; all others 1)
 - Pruned: 0 excess bullets (max 4 bullets/file < max 15)
+
+---
+
+## 2026-06-18 - TASK-005 Reflection
+
+### Extracted Patterns
+- **api-design** → amended `agent-rules/_learned/api-design.md` (evidence count: 2 → 4) — two child-resource routing learnings: (1) `Router({ mergeParams: true })` exposes the parent-mount param (`:boardId`) inside the child router; (2) pre-flight `findById` on the parent entity → `notFoundError` (404) before inserting a child FK row, avoiding pg `23503` interpretation. Globs widened to include `src/db/**/*.ts`; `routing` topic added. **Promoted low → medium** (evidence_count reached promotion threshold 3).
+
+### systemPatterns.md Updates
+- None (both learnings are API-convention/coding practices captured in the learned api-design rule rather than systemPatterns Guiding Principles — consistent with how the express.json() scoping note was handled in TASK-004)

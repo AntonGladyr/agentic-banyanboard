@@ -17,13 +17,14 @@
 | TASK-002 | 2026-06-16 | 2 | 1 | 1 |
 | TASK-003 | 2026-06-17 | 1 | 1 | 0 |
 | TASK-004 | 2026-06-17 | 2 | 2 | 0 |
+| TASK-005 | 2026-06-18 | 2 | 1 | 0 |
 
 ## Rule Effectiveness
 
 | File | Topics | Evidence Count | Priority | Last Updated |
 |------|--------|---------------:|:--------:|:------------:|
 | testing-patterns.md | testing, jest, logging, mocking | 4 | medium | 2026-06-17 |
-| api-design.md | api-design, express, testability | 2 | low | 2026-06-17 |
+| api-design.md | api-design, express, testability, routing | 4 | medium | 2026-06-18 |
 | error-handling.md | error-handling, express, security | 1 | low | 2026-06-16 |
 | typescript-config.md | typescript, config, 12-factor | 1 | low | 2026-06-16 |
 | tooling.md | tooling, env-files, claude-code-settings | 1 | low | 2026-06-16 |
