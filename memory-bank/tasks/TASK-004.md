@@ -9,6 +9,7 @@
 **Archived**: memory-bank/archive/archive-TASK-004.md
 **Completed**: 2026-06-17
 **Merge Status**: merged (local-merge into master)
+**Merge Commit**: bfb826a
 
 ## Task Description
 
