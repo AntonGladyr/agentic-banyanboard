@@ -2,6 +2,15 @@
 
 ---
 
+## Task Archive: TASK-005
+
+**Task**: Card model with CRUD endpoints
+**Status**: ✅ ARCHIVED
+**Date**: 2026-06-18
+**Archive**: `memory-bank/archive/archive-TASK-005.md`
+
+---
+
 ## Task Archive: TASK-004
 
 **Task**: Board model with CRUD endpoints

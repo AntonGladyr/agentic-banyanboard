@@ -1,11 +1,13 @@
 # TASK-005: Card model with CRUD endpoints
 
 **Complexity**: Level 2 (inherited from FEAT-004)
-**Status**: REFLECTION_COMPLETE
+**Status**: COMPLETE
 **Roadmap**: FEAT-004
 **Branch**: feature/FEAT-004-card-model-crud
 **Worktree**: N/A
 **Reflection**: memory-bank/reflection/reflection-TASK-005.md
+**Archived**: memory-bank/archive/archive-TASK-005.md
+**Completed**: 2026-06-18
 
 ## Task Description
 
@@ -441,12 +443,14 @@ All three open questions were resolved by human decision during `/banyan-plan`; 
 ## Execution State
 
 **Build Status**: IDLE
-**Current Phase**: REFLECT → ARCHIVE
-**Current Step**: Reflection complete — Status=REFLECTION_COMPLETE; ready for /banyan-archive
+**Current Phase**: COMPLETE
+**Current Step**: Archived — Status=COMPLETE; task closed
 **Phase Number**: 3 of 3
 **Is Multi-Phase**: YES
-**Last Completed**: REFLECT (2026-06-18)
+**Last Completed**: ARCHIVE (2026-06-18)
 **Can Resume**: NO
+**Worktree Cleaned**: N/A (no worktree)
+**Branch Deleted**: YES (merged to master)
 
 ### Active Sub-Agents
 (none — orchestrator implemented directly for this Level 2 phase)
