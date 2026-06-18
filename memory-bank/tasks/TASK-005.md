@@ -417,7 +417,7 @@ All three open questions were resolved by human decision during `/banyan-plan`; 
 
 - [x] **Phase 1: `cards` table migration.** Author a new `node-pg-migrate` migration (via `npm run migrate:create -- create-cards-table`) creating the `cards` table per § cards Table Schema: `id` SERIAL PK, `board_id INTEGER NOT NULL REFERENCES boards(id) ON DELETE CASCADE`, `title VARCHAR(255) NOT NULL`, `description TEXT`, `position INTEGER NOT NULL DEFAULT 0`, `created_at`/`updated_at` TIMESTAMPTZ DEFAULT NOW(). Use `pgm.createTable(..., { ifNotExists: true })` with a `references: 'boards'` + `onDelete: 'CASCADE'` column spec (mirror `migrations/1781743422435_create-boards-table.js`); `down` drops the table. No new tooling/deps (node-pg-migrate + migrate scripts already exist from TASK-004). Verify up→down→up against the local Docker Postgres. _Note: a `board_id` index is created implicitly only on the PK side; add an explicit index on `cards(board_id)` since list queries filter by it._
 - [x] **Phase 2: Card data-access module + input validation (TDD).** Add `src/db/cards.ts` with parameterized query functions (`create`, `listByBoard(boardId)`, `findById`, `update`, `remove`) over the `cards` table using `getPool()` — mirror `src/db/boards.ts` (RETURNING_COLUMNS incl. `board_id`/`position`; list ordered `position ASC, id ASC`; `findById`/`update` return `Card | null`; `remove` returns boolean). Add `src/validation/card.ts` with `validateCreate`, `validateUpdate` (throwing `badRequest` from `src/errors.ts`) and reuse `validateId` from `src/validation/board.ts` for `boardId`/`id` (it is domain-agnostic). Write `src/validation/card.test.ts` FIRST (Phase 2 unit tests), then implement.
-- [ ] **Phase 3: Card CRUD routes + registration + integration tests (TDD).** Add `src/routes/cards.ts` — `Router({ mergeParams: true })`, `express.json()` scoped to the router, five async handlers with validate-before-DB, the **pre-flight board-existence check** on POST (`findById(boardId)` on boards → 404 if absent), `notFoundError` for absent cards, try/catch→`next(err)`, business events via `req.log.info`, zero `console.*`. Register via `apiRouter.use('/boards/:boardId/cards', cardsRouter)` in `src/routes/index.ts`. Write `src/routes/cards.test.ts` FIRST (in-memory store modelling boards + cards, per-board filtering), then implement. Delivers the complete entry-to-success flow; satisfies all ACs.
+- [x] **Phase 3: Card CRUD routes + registration + integration tests (TDD).** Add `src/routes/cards.ts` — `Router({ mergeParams: true })`, `express.json()` scoped to the router, five async handlers with validate-before-DB, the **pre-flight board-existence check** on POST (`findById(boardId)` on boards → 404 if absent), `notFoundError` for absent cards, try/catch→`next(err)`, business events via `req.log.info`, zero `console.*`. Register via `apiRouter.use('/boards/:boardId/cards', cardsRouter)` in `src/routes/index.ts`. Write `src/routes/cards.test.ts` FIRST (in-memory store modelling boards + cards, per-board filtering), then implement. Delivers the complete entry-to-success flow; satisfies all ACs.
 
 ### Observability Requirements
 
@@ -439,16 +439,16 @@ All three open questions were resolved by human decision during `/banyan-plan`; 
 
 ## Execution State
 
-**Build Status**: COMPLETE (Phase 2/3)
+**Build Status**: COMPLETE (Phase 3/3 — all phases done)
 **Current Phase**: BUILD
-**Current Step**: Phase 2 complete — ready for /banyan-build (Phase 3: routes + registration + integration tests)
-**Phase Number**: 2 of 3
+**Current Step**: Phase 3 complete — Status=BUILD_COMPLETE; ready for /banyan-reflect
+**Phase Number**: 3 of 3
 **Is Multi-Phase**: YES
-**Last Completed**: BUILD Phase 2/3 (2026-06-17)
+**Last Completed**: BUILD Phase 3/3 (2026-06-17)
 **Can Resume**: NO
 
 ### Active Sub-Agents
-(none)
+(none — orchestrator implemented directly for this Level 2 phase)
 
 ### Build Phase 1 Summary
 
@@ -466,6 +466,14 @@ All three open questions were resolved by human decision during `/banyan-plan`; 
 - Verification: card unit suite 19/19 PASS; full suite **90/90** (71 prior + 19 new — no regression). Build (`tsc`): clean. Lint: N/A (no lint script). Code-level security: parameterized queries only; no `console.*`.
 - Remaining: Phase 3 (routes `src/routes/cards.ts` with `mergeParams` + pre-flight board-existence check + registration in `src/routes/index.ts` + integration tests `src/routes/cards.test.ts`).
 
+### Build Phase 3 Summary
+
+- `src/routes/cards.test.ts` written FIRST (TDD): 23 integration tests via `supertest(createApp())` against the mocked `getPool().query` seam, backed by an in-memory store modelling BOTH `boards` (for the pre-flight existence check) and `cards` (per-board filtering + `position ASC, id ASC` ordering). Covers AC-ENTRY-1; AC-HAPPY-1..5 (incl. persistence/stub-detection round-trips, per-board isolation, ordering, description/position defaults); pre-flight (POST to unknown `boardId` → 404, no insert); AC-ERROR-1 (`title`), AC-ERROR-2 (404 GET/PATCH/DELETE), AC-ERROR-3 (non-integer `:boardId` and `:id` → 400, no DB query), AC-ERROR-4 (empty PATCH → 400, no DB query), AC-ERROR-5 (`position` negative/non-numeric); AC-OBS-1 (zero `console.*`), AC-OBS-2 (DB error → 500, no leak).
+- `src/routes/cards.ts`: `Router({ mergeParams: true })` (exposes parent-mount `:boardId`), `express.json()` scoped to the router, five async handlers with validate-before-DB. POST does the **pre-flight board-existence check** via `findById` re-imported as `findBoardById` from `db/boards` → `notFoundError` (404) if absent. Read/update/delete map absent cards to `notFoundError`. Every `:boardId`/`:id` validated as positive integer (reused `validateId`). All handlers try/catch → `next(err)`; business events (`card created/updated/deleted`) via `req.log.info`; zero `console.*`.
+- Registered in `src/routes/index.ts`: `apiRouter.use('/boards/:boardId/cards', cardsRouter)` (alongside the existing boards mount).
+- Verification: cards integration suite 23/23 PASS; full suite **113/113** (90 prior + 23 new — no regression). Build (`tsc`): clean. Lint: N/A (no lint script). Code-level security: parameterized queries (Phase-2 data-access), validate-before-DB, no internal detail leaked (centralized errorHandler), no `console.*`.
+- All three implementation phases complete → Status=BUILD_COMPLETE.
+
 ### Completed Steps
 - Step 0/0.1 Auto-provisioning: COMPLETE (2026-06-17) — TASK-005 created for FEAT-004 (Card model), Level 2 inherited; branch feature/FEAT-004-card-model-crud
 - Step 0.5 Agent Rules Index: COMPLETE (2026-06-17) — reindexed (5 learned rules, testing-patterns promoted to medium); no unsafe rules, no conflicts
@@ -476,6 +484,7 @@ All three open questions were resolved by human decision during `/banyan-plan`; 
 - Step 6 Finalize: COMPLETE (2026-06-17) — validation gate passed; no creative phase; Status=PLANNING_COMPLETE
 - BUILD Phase 1/3: COMPLETE (2026-06-17) — `cards` table migration authored + up→down→up verified against Docker Postgres; FK CASCADE + board_id index confirmed; build clean; 71/71 suite (no regression); committed to feature branch
 - BUILD Phase 2/3: COMPLETE (2026-06-17) — `src/validation/card.ts` + `src/db/cards.ts` + `src/validation/card.test.ts` (TDD, tests first); 19 new unit tests; full suite 90/90 (no regression); build clean; committed to feature branch
+- BUILD Phase 3/3: COMPLETE (2026-06-17) — `src/routes/cards.ts` (mergeParams + pre-flight board check) + registration in `src/routes/index.ts` + `src/routes/cards.test.ts` (TDD, tests first); 23 new integration tests; full suite 113/113 (no regression); build clean; Status=BUILD_COMPLETE; committed to feature branch
 
 ### Prior State (PLAN)
 - PLAN: Spec Writer Agent drafted specification (Sonnet)
