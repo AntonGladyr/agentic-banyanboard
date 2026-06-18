@@ -72,7 +72,7 @@
 - **Complexity**: Level 2
 - **Description**: Add a Card domain model with full CRUD REST endpoints (create, read one, list, update, delete) on the Express API. Cards have a foreign key to Board (`board_id`) enforcing referential integrity. Includes request input validation (body and params), structured error responses, environment-driven persistence via the existing PostgreSQL connection module, and unit + integration tests. Follows the layered Express + Postgres patterns established in FEAT-001/002/003.
 - **Dependencies**: FEAT-005 (Board model — required for the `board_id` foreign key)
-- **Linked Tasks**: None
+- **Linked Tasks**: TASK-005 (planning)
 - **Branch**: feature/FEAT-004-card-model-crud
 - **Created**: 2026-06-17
 
