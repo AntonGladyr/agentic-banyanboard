@@ -65,3 +65,14 @@ Chronological record of pattern extraction and consolidation events from task re
 - Expired: 0 bullets (all created/amended within the 90-day window)
 - Promoted: 0 files (testing-patterns already promoted to medium during TASK-003 reflection; all others evidence_count 1 < threshold 3)
 - Pruned: 0 excess bullets (max 3 bullets/file < max 15)
+
+---
+
+## 2026-06-17 - TASK-004 Reflection
+
+### Extracted Patterns
+- **testing-patterns** → amended `agent-rules/_learned/testing-patterns.md` (evidence count: 4) — back a mocked `getPool().query` with a minimal in-memory store (Map/array + auto-increment counter) so persistence round-trip and stub-detection ACs are meaningfully exercised. (Already medium priority.)
+- **api-design** → amended `agent-rules/_learned/api-design.md` (evidence count: 2) — scope `express.json()` to the domain router when it is the sole body-accepting domain; refactor to global only when a second arrives. Globs widened to include `src/routes/**/*.ts`. (Stays low — evidence_count 2 < promotion threshold 3.)
+
+### systemPatterns.md Updates
+- None (both learnings are coding/API-convention practices, not novel architecture patterns; the `express.json()` scoping note is captured in the learned api-design rule rather than systemPatterns Guiding Principles)
