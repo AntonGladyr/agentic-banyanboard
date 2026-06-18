@@ -361,7 +361,7 @@ Implications for the plan:
 
 - [x] **Phase 1: Migration tooling + `boards` table.** Add `node-pg-migrate` dependency; add `migrate` / `migrate:down` / `migrate:create` npm scripts driven by `DATABASE_URL` (12-Factor, no hardcoded DSN); author the first migration creating the `boards` table per the spec schema (`id`, `name`, `description`, `created_at`, `updated_at`). Document the commands in `techContext.md`. Verify up/down against the local Docker Postgres. ✅ COMPLETE (2026-06-17) — `node-pg-migrate@^7.9.1`; migration `migrations/1781743422435_create-boards-table.js`; up→down→up verified against Docker Postgres (table shape matches spec exactly); build + 38 tests green.
 - [x] **Phase 2: Board data-access module + input validation.** Add `src/db/boards.ts` (or `src/models/board.ts`) with parameterized query functions (`create`, `list`, `findById`, `update`, `delete`) using `getPool()`. Add `src/validation/board.ts` with `validateCreate`, `validateUpdate`, and `validateId` returning status-400 errors on failure. Unit-test validation (Phase 2 tests). ✅ COMPLETE (2026-06-17) — `src/db/boards.ts` (create/list/findById/update/remove, all parameterized; returns Board/null/boolean), `src/validation/board.ts` (validateCreate/validateUpdate/validateId throwing `HttpError` status 400), `src/errors.ts` (shared `HttpError` + `badRequest`/`notFoundError` factories, recognized by errorHandler via `.status`), `src/validation/board.test.ts` (15 unit tests). Build PASS; full suite 53/53.
-- [ ] **Phase 3: Board CRUD routes + registration + integration tests.** Add `src/routes/boards.ts` implementing the five endpoints (async handlers, `req.log` structured logging, validation-before-DB, `next(err)` on failure); register via `apiRouter.use('/boards', boardsRouter)` in `src/routes/index.ts`. Integration tests covering all remaining ACs. This phase delivers the complete entry-to-success flow.
+- [x] **Phase 3: Board CRUD routes + registration + integration tests.** Add `src/routes/boards.ts` implementing the five endpoints (async handlers, `req.log` structured logging, validation-before-DB, `next(err)` on failure); register via `apiRouter.use('/boards', boardsRouter)` in `src/routes/index.ts`. Integration tests covering all remaining ACs. This phase delivers the complete entry-to-success flow. ✅ COMPLETE (2026-06-17) — `src/routes/boards.ts` (5 endpoints; `express.json()` scoped to the router; validate-before-DB; 404 via `notFoundError`; try/catch→`next(err)`; business events via `req.log.info`, zero `console.*`), registered in `src/routes/index.ts`; `src/routes/boards.test.ts` (18 integration tests via mocked `getPool().query` backed by an in-memory store for faithful persistence/stub-detection). Build PASS (tsc clean); full suite **71/71** (was 53; +18). All ACs (ENTRY-1, HAPPY-1..5, ERROR-1..4, OBS-1/2) satisfied. **BUILD_COMPLETE.**
 
 ### Observability Requirements
 
@@ -383,17 +383,17 @@ Implications for the plan:
 
 ## Build Execution State
 
-**Build Status**: COMPLETE (Phase 2 of 3)
-**Current Build**: Phase 2: Board data-access module + input validation (TASK-004) — COMPLETE
+**Build Status**: BUILD_COMPLETE (all 3 phases done)
+**Current Build**: Phase 3: Board CRUD routes + registration + integration tests (TASK-004) — COMPLETE
 **Build Started**: 2026-06-17
-**Phase Number**: 2 of 3
+**Phase Number**: 3 of 3
 **Is Multi-Phase**: YES
 
 ### Current Build Step
-**Step**: Phase 2 complete — awaiting human review before Phase 3
+**Step**: Phase 3 complete — all phases done; awaiting `/banyan-reflect`
 **Status**: COMPLETE
 **Completed**: 2026-06-17
-**Output**: `src/errors.ts` (HttpError + badRequest/notFoundError), `src/validation/board.ts` (validateCreate/validateUpdate/validateId), `src/db/boards.ts` (create/list/findById/update/remove — parameterized), `src/validation/board.test.ts` (15 unit tests). Build PASS (tsc clean); full suite 53/53 (was 38; +15).
+**Output**: `src/routes/boards.ts` (5 CRUD endpoints; `express.json()` scoped to router; validate-before-DB; 404 via `notFoundError`; try/catch→`next(err)`; `req.log.info` business events; zero `console.*`), registered via `apiRouter.use('/boards', boardsRouter)` in `src/routes/index.ts`; `src/routes/boards.test.ts` (18 integration tests, mocked `getPool().query` backed by an in-memory store). Build PASS (tsc clean); full suite 71/71 (was 53; +18).
 
 ### Completed Steps
 - Step 0.5 Git Setup: COMPLETE (2026-06-17) — branch `feature/FEAT-005-board-model-crud` (no worktree; Worktree=N/A)
@@ -405,14 +405,18 @@ Implications for the plan:
 - Phase 2 Implementation: COMPLETE (2026-06-17) — errors.ts + validation/board.ts + db/boards.ts
 - Phase 2 Integration Verification: COMPLETE (2026-06-17) — full suite 53/53, build PASS (tsc clean)
 - Phase 2 Code Review (self): COMPLETE (2026-06-17) — parameterized queries (SQLi-safe), zero console.*, HttpError→errorHandler integration; 0 blocking
+- Phase 3 Test Writer (TDD): COMPLETE (2026-06-17) — 18 integration tests authored first in `src/routes/boards.test.ts`
+- Phase 3 Implementation: COMPLETE (2026-06-17) — `src/routes/boards.ts` (5 endpoints) + registration in `src/routes/index.ts`
+- Phase 3 Integration Verification: COMPLETE (2026-06-17) — full suite 71/71, build PASS (tsc clean)
+- Phase 3 Code Review (self): COMPLETE (2026-06-17) — validate-before-DB, parameterized queries (SQLi-safe via Phase-2 layer), zero console.*, no internal-detail leak (AC-OBS-2 dual-asserted), 404 via notFoundError; 0 blocking
 
 ### Sub-Agents
-(none — focused Level 2 phase; orchestrator implements directly with TDD discipline, mirroring Phase 1)
+(none — focused Level 2 phase; orchestrator implements directly with TDD discipline, mirroring Phases 1-2)
 
 ### Resumption Notes
-**Can Resume**: N/A (phase complete — human review gate)
-**Resume From**: Phase 3 (next `/banyan-build TASK-004`)
-**Notes**: Phase 3 = `src/routes/boards.ts` (5 endpoints; async handlers, req.log, validate-before-DB, next(err)) consuming `src/validation/board.ts` + `src/db/boards.ts`; register `apiRouter.use('/boards', boardsRouter)` in `src/routes/index.ts`; integration tests `src/routes/boards.test.ts` (AC-ENTRY-1, AC-HAPPY-1..5, AC-ERROR-1..4, AC-OBS-1/2) via mocked `getPool().query` + supertest. Use `notFoundError(...)` from `src/errors.ts` for 404s. Validators throw `HttpError`; wrap handler bodies in try/catch → next(err).
+**Can Resume**: N/A (all phases complete — BUILD_COMPLETE)
+**Resume From**: N/A — next workflow step is `/banyan-reflect TASK-004`
+**Notes**: All three phases complete. Five `/api/v1/boards` endpoints live and integration-tested; all task ACs satisfied (ENTRY-1, HAPPY-1..5, ERROR-1..4, OBS-1/2). Design note: `express.json()` is scoped to the boards router (not global in app.ts) since boards is the only body-accepting domain — keeps app.ts composition documentation intact. Integration tests mock the `db/pool` seam with an in-memory store so persistence/stub-detection ACs are faithfully exercised without a live Postgres (real round-trip covered by Phase-1 migration in CI).
 
 ### Prior State (PLAN)
 - PLAN: Spec Writer Agent drafted specification (Sonnet)

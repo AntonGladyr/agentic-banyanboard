@@ -20,6 +20,7 @@
 - **REST API**: Express-based; all responses JSON (including errors — never Express default HTML). Realized endpoints (Phase 3):
   - `GET /health` → liveness + PostgreSQL readiness probe (FEAT-003): 200 `{status:"ok", db:"ok", timestamp}` when reachable, 503 `{status:"error", db:"error", timestamp}` when unreachable, 200 `{status:"ok", db:"unconfigured", timestamp}` when `DATABASE_URL` is unset. Readiness via `checkConnection()`; DB errors logged server-side only.
   - `GET /api/v1` → 200 JSON scaffold root (`{api, status}`); domain routers mount under `/api/v1` as added
+  - `/api/v1/boards` → Board CRUD (FEAT-005 / TASK-004): `POST` create→201, `GET` list→200 (`[]` when empty), `GET /:id` read→200/404, `PATCH /:id` update→200/404/400, `DELETE /:id`→204/404. Input validated before any DB call (name required/≤255, `:id` positive integer, PATCH ≥1 field); `express.json()` is scoped to the boards router. Persistence via the `boards` table (`src/db/boards.ts`, parameterized) created by the Phase-1 migration.
 - **Error responses** (Phase 4, realized): centralized terminal middleware returns JSON with a generic label + `traceId` for client correlation (no internal detail leaked):
   - Unmatched route → `404 {error:'Not Found', path, traceId}`
   - Carried 4xx client error → that status with `{error:<fixed label>, path, traceId}`
