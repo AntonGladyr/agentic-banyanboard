@@ -2,6 +2,15 @@
 
 ---
 
+## Task Archive: TASK-004
+
+**Task**: Board model with CRUD endpoints
+**Status**: ✅ ARCHIVED
+**Date**: 2026-06-17
+**Archive**: `memory-bank/archive/archive-TASK-004.md`
+
+---
+
 ## Task Archive: TASK-003
 
 **Task**: Health check endpoint with tests

@@ -25,7 +25,7 @@
 - **Target Date**: TBD
 - **Description**: Backlog for future features not yet assigned to a release.
 - **Features**:
-  - FEAT-005: Board model with CRUD endpoints (in_progress) [Level 2]
+  - FEAT-005: Board model with CRUD endpoints (complete) [Level 2]
   - FEAT-004: Card model with CRUD endpoints (planned) [Level 2]
 
 ## Features
@@ -79,10 +79,10 @@
 ### FEAT-005: Board model with CRUD endpoints
 
 - **Version**: next
-- **Status**: in_progress
+- **Status**: complete
 - **Priority**: high
 - **Complexity**: Level 2
 - **Description**: Add a Board domain model with full CRUD REST endpoints (create, read one, list, update, delete) on the Express API. Establishes the `boards` table that Cards reference via foreign key. Includes request input validation, structured error responses, environment-driven persistence via the existing PostgreSQL connection module, and unit + integration tests. Prerequisite for FEAT-004 (Card model). Follows the layered Express + Postgres patterns established in FEAT-001/002/003.
-- **Linked Tasks**: TASK-004 (planning)
+- **Linked Tasks**: TASK-004 (complete — archived 2026-06-17)
 - **Branch**: feature/FEAT-005-board-model-crud
 - **Created**: 2026-06-17

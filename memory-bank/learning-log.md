@@ -76,3 +76,13 @@ Chronological record of pattern extraction and consolidation events from task re
 
 ### systemPatterns.md Updates
 - None (both learnings are coding/API-convention practices, not novel architecture patterns; the `express.json()` scoping note is captured in the learned api-design rule rather than systemPatterns Guiding Principles)
+
+---
+
+## 2026-06-17 - Consolidation (during TASK-004 archive)
+
+- Files before: 5, Files after: 5
+- Merged: 0 files (all 5 topics distinct — no >50% topic/glob overlap)
+- Expired: 0 bullets (all created/amended within the 90-day window)
+- Promoted: 0 files (testing-patterns already medium; api-design evidence_count 2 < threshold 3; all others 1)
+- Pruned: 0 excess bullets (max 4 bullets/file < max 15)
