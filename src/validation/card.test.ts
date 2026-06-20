@@ -69,11 +69,37 @@ describe('validateCreate', () => {
     expect(thrownStatus(() => validateCreate({ title: 'X', position: 1.5 }))).toBe(400);
   });
 
-  it('accepts a valid title and defaults omitted description to null and position to 0', () => {
+  // ── status (FEAT-006 Phase 1) ──────────────────────────────────────────────────────────────
+  it('rejects an unrecognized status value with a 400', () => {
+    expect(thrownStatus(() => validateCreate({ title: 'X', status: 'archived' }))).toBe(400);
+  });
+
+  it('rejects a non-string status with a 400', () => {
+    expect(thrownStatus(() => validateCreate({ title: 'X', status: 1 }))).toBe(400);
+  });
+
+  it('rejects an empty-string status with a 400', () => {
+    expect(thrownStatus(() => validateCreate({ title: 'X', status: '' }))).toBe(400);
+  });
+
+  it.each(['todo', 'in_progress', 'done'])(
+    'accepts the valid status value %p',
+    (status) => {
+      expect(validateCreate({ title: 'X', status })).toEqual({
+        title: 'X',
+        description: null,
+        position: 0,
+        status,
+      });
+    },
+  );
+
+  it('accepts a valid title and defaults omitted description to null, position to 0, status to todo', () => {
     expect(validateCreate({ title: 'Implement login' })).toEqual({
       title: 'Implement login',
       description: null,
       position: 0,
+      status: 'todo',
     });
   });
 
@@ -85,6 +111,7 @@ describe('validateCreate', () => {
       title,
       description: 'a description',
       position: 0,
+      status: 'todo',
     });
   });
 });
@@ -116,6 +143,19 @@ describe('validateUpdate', () => {
 
   it('accepts a position-only partial update', () => {
     expect(validateUpdate({ position: 3 })).toEqual({ position: 3 });
+  });
+
+  // ── status (FEAT-006 Phase 1) ──────────────────────────────────────────────────────────────
+  it('treats status as a recognized field — a status-only update is valid', () => {
+    expect(validateUpdate({ status: 'in_progress' })).toEqual({ status: 'in_progress' });
+  });
+
+  it('rejects an unrecognized status value on update with a 400', () => {
+    expect(thrownStatus(() => validateUpdate({ status: 'archived' }))).toBe(400);
+  });
+
+  it('rejects a non-string status on update with a 400', () => {
+    expect(thrownStatus(() => validateUpdate({ status: 42 }))).toBe(400);
   });
 });
 
