@@ -335,7 +335,7 @@ TASK-006 introduces the project's first frontend tier (a read-only React SPA) an
 ## Implementation Roadmap
 
 - [x] Phase 1: Backend — add `status` field to the Card model (migration + validation + data-access + integration tests) → delivers AC-STATUS-1 — COMPLETE (2026-06-20)
-- [ ] Phase 2: Frontend foundation — build tooling, project layout, dev proxy + prod serving strategy, client-side routing skeleton, typed API client + shared types, app shell
+- [x] Phase 2: Frontend foundation — build tooling, project layout, dev proxy, client-side routing skeleton, typed API client + shared types, app shell, ErrorBoundary + errorReporter, Vitest + RTL — COMPLETE (2026-06-20). (Prod static serving deferred to Phase 5 per Architecture creative phase mapping.)
 - [ ] Phase 3: Board list page (`/`) — fetch + render boards, navigable entries, empty/loading/error states → delivers AC-ENTRY-1, AC-ENTRY-2, AC-ERROR-1 (list), AC-LOADING-1 (list)
 - [ ] Phase 4: Board view page (`/boards/:id`) — three status-mapped columns, card display, empty-column/loading/error-404 states, back-nav, direct-URL nav → delivers AC-HAPPY-1/2/3, AC-ERROR-2, AC-LOADING-1 (view), AC-NAV-1
 - [ ] Phase 5: E2E tests + serving verification — implement entry-to-success E2E specs, verify full journeys and dev/prod serving (post-UAT per Level 3 flow)
@@ -349,21 +349,41 @@ TASK-006 introduces the project's first frontend tier (a read-only React SPA) an
 
 ## Execution State
 
-**Build Status**: COMPLETE (Phase 1 of 5)
+**Build Status**: COMPLETE (Phase 2 of 5)
 **Current Phase**: BUILD
-**Current Build**: Phase 1: Backend — add `status` field to the Card model — COMPLETE
-**Phase Number**: 1 of 5
+**Current Build**: Phase 2: Frontend foundation — scaffold `client/` (Vite + React + TS), tsconfig split, dev proxy, router skeleton, typed API client + shared types, app shell, ErrorBoundary + errorReporter, Vitest + RTL — COMPLETE
+**Phase Number**: 2 of 5
 **Is Multi-Phase**: YES
 **Build Started**: 2026-06-20
-**Current Step**: Phase 1 complete — awaiting human review, then /banyan-build TASK-006 (Phase 2)
-**Last Completed**: BUILD Phase 1/5 (2026-06-20)
+**Current Step**: Phase 2 complete — awaiting human review, then /banyan-build TASK-006 (Phase 3)
+**Last Completed**: BUILD Phase 2/5 (2026-06-20)
 **Can Resume**: NO
 **Branch**: feature/FEAT-006-react-frontend-board-ui (created from master 2026-06-20)
 
-### Current Build Step
-**Step**: Step 11 — Git Completion (Phase 1)
-**Status**: RUNNING (committing)
+### Current Build Step (Phase 2)
+**Step**: Step 11 — Git Completion (Phase 2)
+**Status**: RUNNING — committing the `client/` scaffold to the feature branch (push deferred to human / archive per project config).
 **Started**: 2026-06-20
+
+### Build Completed Steps (Phase 2)
+- Step 0.5 Git Setup: COMPLETE — on feature/FEAT-006-react-frontend-board-ui (in-tree, no worktree).
+- Step 0.6 Phase Gate: COMPLETE — roadmap populated; both creative phases COMPLETE.
+- Step 1 Read Task Context: COMPLETE — Phase 2 (frontend foundation) identified, Level 3.
+- Step 2 Load Context: COMPLETE — Architecture creative (Vite + `client/` + Vite dev proxy; static serving deferred to Phase 5) + UI/UX creative (tokens) reviewed; backend contract captured (Board/Card shapes incl. `status`; error body `{ error, path?, traceId }`).
+- Step 3 Test Writer: COMPLETE — 9 Vitest tests written first (apiClient: success/notFound/server/network mapping + no-leak; App routing smoke for both routes + shell brand).
+- Step 4 Coding Agent (orchestrator-authored scaffold): COMPLETE — `client/` package (Vite+React+TS), tsconfig solution split, vite proxy config, router skeleton (App + AppShell + page skeletons), apiClient + types, errorReporter + ErrorBoundary, tokens.css + globals.css, README.
+- Steps 5–7 Test/Build/Integration: COMPLETE — frontend typecheck PASS; Vitest 9/9 PASS; `vite build` PASS (dist emitted). Backend `tsc` build PASS + Jest 127/127 PASS → `client/` isolation confirmed, no backend regression. No lint script in either package (N/A).
+- Step 8 Code Review: COMPLETE — independent reviewer (build-code-reviewer-agent) APPROVED-WITH-NITS, 0 blocking. NIT 1 (ReactNode import consistency) applied; NIT 2 (tsconfig naming — improvement, noted below); NIT 3 (Phase-4 must refresh App.test.tsx placeholder selectors).
+- Steps 9–10 Docs/Memory Bank: COMPLETE — progress.md (build entry), techContext.md (Frontend Tier + commands + env var + Last Refreshed), tasks.md registry (Phase 2/5), this file updated.
+
+### Phase 2 Notes / Deviations (for Phase 3+ and reflection)
+- **tsconfig naming**: implemented the standard Vite 3-file solution layout (`tsconfig.json` solution → `tsconfig.app.json` + `tsconfig.node.json`) instead of the architecture doc's 2-file naming. Resolves TS6310 (composite project may not disable emit) and is the current Vite scaffold default — same intent, an improvement, not drift.
+- **`client/.env.development` not created**: blocked by the `Edit(.env.*)` permission guardrail. `VITE_API_PROXY_TARGET` has a code default in `vite.config.ts`, so the file is optional; override documented in `client/README.md`.
+- **Spurious self-dependency removed**: `npm install --prefix client` (run from repo root) injected `agentic-banyanboard: file:..` into `client/package.json` and symlinked the repo root into `client/node_modules`. Fixed by removing it and installing from within `client/`. Phase 3+ MUST run `npm install` from inside `client/`.
+- **Phase 4 reminder**: `client/src/App.test.tsx` routing smoke asserts placeholder copy (`Boards`, `Board 42`); update those selectors when Phase 4 replaces the BoardViewPage skeleton with the real board name.
+
+### Phase 1 (archived)
+**Step 11 — Git Completion (Phase 1)**: COMPLETE — committed `33786aa` to feature/FEAT-006-react-frontend-board-ui (NOT pushed; push deferred to human / archive per project config). Completed 2026-06-20.
 
 ### Build Completed Steps (Phase 1)
 - Step 0.5 Git Setup: COMPLETE — Feature branch created (no worktree; in-tree). Worktree=N/A.

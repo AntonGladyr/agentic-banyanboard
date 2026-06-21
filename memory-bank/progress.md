@@ -2,6 +2,28 @@
 
 ---
 
+## Build Phase: TASK-006 (React frontend board UI) — IN PROGRESS
+
+**Date**: 2026-06-20
+**Status**: Phase 2 of 5 complete → awaiting human review, then Phase 3
+
+#### Phase 1 — Backend `status` field — COMPLETE (commit `33786aa`)
+- Migration `add-status-to-cards` (`varchar(20)` NOT NULL DEFAULT `'todo'`, backfills existing rows); `status` threaded through `RETURNING_COLUMNS`, validation (`CardStatus`/`checkStatus`), data-access. Delivers AC-STATUS-1. 127/127 Jest pass.
+
+#### Phase 2 — Frontend foundation — COMPLETE
+- Scaffolded the project's first frontend tier as an isolated `client/` package (Vite + React 18 + TypeScript), per the Architecture creative composite decision.
+- **Build/dev tooling**: Vite 5 (`@vitejs/plugin-react`), solution-style tsconfig split (`tsconfig.json` → `tsconfig.app.json` + `tsconfig.node.json`; resolves the composite+noEmit TS6310 constraint and honors the architecture's two-tsconfig decision), `tsc -b` typecheck.
+- **Dev/prod parity**: SPA calls relative `/api/v1`; Vite dev `server.proxy` forwards `/api/v1` + `/health` to the Express backend via env-driven `VITE_API_PROXY_TARGET` (default `http://localhost:3000`). Prod static serving deferred to Phase 5.
+- **Routing skeleton**: react-router-dom `BrowserRouter`; routes `/` → BoardListPage, `/boards/:id` → BoardViewPage (intentional skeletons for Phase 3/4); `AppShell` provides `<header>`/`<main>` landmarks; pages focus their `<h1>` on mount and update `document.title`.
+- **Typed API client** (`apiClient.ts`) + shared `types.ts` (Board/Card incl. `status`, timestamps as ISO strings): `getBoards`/`getBoard`/`getCards`; maps failures to a safe `ApiError` category (`network|notFound|server`), never carrying the raw response body/stack (GP5); rethrows native `AbortError` for unmount cancellation.
+- **Client observability** (Architecture creative Q4): single `errorReporter` structured `console.error` sink + global `unhandledrejection`/`error` handlers; root `ErrorBoundary`. No third-party telemetry.
+- **Design tokens**: `styles/tokens.css` (WCAG-AA-verified palette) + `globals.css` reset + `:focus-visible` ring + `.sr-only`.
+- **Tests (Vitest + RTL, jsdom)**: 9 passing — apiClient success/notFound/server/network mapping + no-leak assertion; App routing smoke (both routes + app-shell brand).
+- **Verification**: frontend typecheck PASS, Vitest 9/9 PASS, `vite build` PASS (`dist/` emitted); backend `tsc` build PASS + Jest 127/127 PASS (confirms `client/` is structurally isolated from the backend build/test — no regression). No lint script in either package (N/A).
+- **Deviations**: (1) tsconfig uses the standard Vite 3-file solution layout rather than the doc's 2-file naming — an improvement, same intent. (2) `client/.env.development` not created — blocked by the `Edit(.env.*)` permission guardrail; the `VITE_API_PROXY_TARGET` code default makes it optional and the override is documented in `client/README.md`. (3) Removed a spurious `agentic-banyanboard: file:..` self-dependency that `npm install --prefix` injected; installing from within `client/` avoids it.
+
+---
+
 ## Creative Phase: TASK-006 (React frontend board UI) — COMPLETE
 
 **Date**: 2026-06-20

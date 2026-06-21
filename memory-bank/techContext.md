@@ -32,6 +32,24 @@
 - **Dev runner**: `tsx` (watch mode)
 - **Testing**: Jest 29 + `ts-jest` 29 (TS transpilation in-test) + `supertest` 7 (in-process HTTP assertions against the `createApp()` factory)
 
+### Frontend Tier (`client/`) — TASK-006 / FEAT-006
+
+The project's first frontend tier, introduced in TASK-006 Phase 2. A read-only React SPA that
+consumes the existing `/api/v1` endpoints. It lives in an **isolated `client/` package** (its own
+`package.json`, `tsconfig`, `node_modules`) so the ESM frontend and CommonJS backend never share a
+build/test config — the backend `tsc` (`include: src/**/*.ts`) and Jest (`roots: src`) ignore
+`client/` structurally, with zero backend config changes. See
+`memory-bank/creative/TASK-006-react-frontend-architecture.md` for the binding decisions.
+
+- **Build tool / dev server**: Vite 5 + `@vitejs/plugin-react`. ESM, fast HMR; production build emits static assets to `client/dist/`.
+- **UI framework**: React 18 (`react`/`react-dom` `^18.3`) + `react-router-dom` 6 (client-side routing, `BrowserRouter`). Routes: `/` → BoardListPage, `/boards/:id` → BoardViewPage.
+- **Styling**: CSS Modules (Vite built-in, no extra deps) + CSS Custom Property design tokens (`client/src/styles/tokens.css`, WCAG-AA-verified palette). Tailwind deliberately rejected (UI/UX creative).
+- **TypeScript**: solution-style project references — `client/tsconfig.json` (pure solution file) → `tsconfig.app.json` (app: `lib` ES2022+DOM, `jsx: react-jsx`, `moduleResolution: Bundler`, `noEmit`, strict + `noUncheckedIndexedAccess`) + `tsconfig.node.json` (for `vite.config.ts`). `tsc -b` typechecks both.
+- **API client**: `client/src/api/apiClient.ts` — typed `fetch` wrappers over the **relative** base `/api/v1`; maps every failure to a safe `ApiError` category (`network|notFound|server`) carrying no raw response body/stack (GP5). Shared contract types in `client/src/api/types.ts` (Board/Card incl. `status`; timestamps as ISO strings).
+- **Client observability** (lightweight, no third-party telemetry): single structured `console.error` sink in `client/src/observability/errorReporter.ts` + global `unhandledrejection`/`error` handlers + a root `ErrorBoundary`. The systemPatterns "no `console.*`" rule targets the backend (pino sink); the browser sink is confined to `errorReporter.ts` by design.
+- **Testing**: Vitest 2 + React Testing Library + jsdom (component/unit), sharing Vite's transform pipeline; scoped to `client/` so it never collides with the backend Jest run. Playwright E2E added in Phase 5 (specs under `client/e2e/`, excluded from Vitest).
+- **Dev/prod parity**: the SPA always calls relative `/api/v1`. In dev, Vite `server.proxy` forwards `/api/v1` + `/health` to the Express backend (target via env `VITE_API_PROXY_TARGET`, default `http://localhost:3000`). In prod (Phase 5), Express serves `client/dist` with a SPA history fallback on the same origin/port (gated behind `SERVE_CLIENT`).
+
 ### TypeScript Configuration (`tsconfig.json`)
 Strict baseline plus targeted flags (Decision 4 in the creative doc):
 - `strict: true`, `noUncheckedIndexedAccess` (forces `process.env[...]` to be treated as `string | undefined` — enforces the single-config-source validation discipline)
@@ -66,6 +84,16 @@ See `memory-bank/creative/TASK-001-express-api-architecture.md` § Observability
 | `npm run migrate:down` | Revert the most recent migration (`node-pg-migrate down`) |
 | `npm run migrate:create -- <name>` | Scaffold a new timestamped JS migration in `migrations/` |
 
+**Frontend (`client/`)** — run from the `client/` directory (`npm install` there first; installing from the repo root with `--prefix client` injects a spurious `file:..` self-dependency, so run it inside `client/`):
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Vite dev server (`:5173`) with HMR + `/api/v1` proxy to the backend |
+| `npm run build` | `tsc -b` typecheck then `vite build` → `client/dist/` |
+| `npm run typecheck` | Type-check only (`tsc -b`) |
+| `npm test` | Run the Vitest suite once |
+| `npm run test:watch` | Vitest in watch mode |
+
 ## Configuration Variables
 
 All env vars are read and validated exclusively in `src/config/env.ts`; invalid values fail fast at startup.
@@ -84,7 +112,15 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 | `OTEL_TRACES_SAMPLER_ARG` | Sampling ratio (reserved for future SDK wiring) | `1.0` |
 | `DATABASE_URL` | PostgreSQL DSN (stub — configurable, NOT connected) | — |
 
-> Note: `.env.example` documenting these vars could not be created automatically (blocked by an `Edit(.env.*)` deny rule) — flagged for manual creation.
+**Frontend (`client/`)** — Vite env vars (build-time, `VITE_`-prefixed; read in `vite.config.ts`):
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `VITE_API_PROXY_TARGET` | Dev-only: target the Vite dev-server proxy forwards `/api/v1` + `/health` to | `http://localhost:3000` |
+
+(`SERVE_CLIENT` / `CLIENT_DIST_PATH` backend vars for prod static serving land in Phase 5.)
+
+> Note: neither `.env.example` (backend) nor `client/.env.development` (frontend) could be created automatically — both blocked by the `Edit(.env.*)` deny rule. The frontend proxy target has a code default in `vite.config.ts`, so the dotenv file is optional; the override is documented in `client/README.md`. Backend `.env.example` flagged for manual creation.
 
 ## Component Structure
 
@@ -96,4 +132,4 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 
 ## Last Refreshed
 
-2026-06-16
+2026-06-20 (TASK-006 Phase 2 — added Frontend Tier `client/`)
