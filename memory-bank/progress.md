@@ -2,6 +2,20 @@
 
 ---
 
+## Build Phase: TASK-007 (Board interactivity & real-time) — Phase 1/6 COMPLETE
+
+**Date**: 2026-06-21
+**Status**: Phase 1 of 6 complete on branch `feature/FEAT-007-board-interactivity-realtime-collab` (local-merge strategy, no remote) → next: human review, then `/banyan-build TASK-007` for Phase 2
+
+#### Phase 1 — Frontend write foundation — COMPLETE
+- **`client/src/api/apiClient.ts`**: added internal `sendJson<T>(method, path, body, originId?, signal?)` mirroring the existing `getJson` safe-`ApiError` mapping (GP5 — error response body never read; 404→`notFound`, 400/500/other non-2xx→`server`, fetch-reject→`network`, `AbortError` rethrown). Sends `Content-Type`/`Accept: application/json` always and `X-Client-Id: <originId>` only when an originId is provided. Five named write wrappers: `createBoard` (POST /boards), `updateBoard` (PATCH /boards/:id), `createCard` (POST /boards/:boardId/cards), `updateCard` (PATCH /boards/:boardId/cards/:id), `updateCardStatus` (PATCH …/:id with `{ status }`).
+- **`X-Client-Id` plumbed in now (consumed in Phase 5)** per the Architecture creative — the per-tab echo-de-dup origin token (opaque UUID, not auth/secret). Designing it into the wrappers upfront avoids Phase-1 rework when Phase 5 adds `useRealtimeBoard`.
+- **`client/src/api/types.ts`**: added frontend write-side payload types `CreateBoardInput`/`UpdateBoardInput`/`CreateCardInput`/`UpdateCardInput`, mirroring the backend validators (`src/validation/board.ts`, `src/validation/card.ts`) as the user-input view (optional fields the form may omit).
+- **`client/src/api/errorCopy.ts`**: added `writeErrorCopy(category)` (create/edit failure — AC-ERROR-3; `notFound` folds into generic server copy) and `dragRevertErrorCopy()` (static optimistic-drag rollback copy — AC-ERROR-4). Both GP5-safe (no internal detail).
+- **Tests (+13)**: `apiClient.test.ts` +10 (success maps JSON; each wrapper hits correct method+path+body; `X-Client-Id` present when originId passed / absent otherwise; 400→server, 404→notFound, fetch-reject→network; no body leak; abort rethrow), `errorCopy.test.ts` +3 (writeErrorCopy categories + no-detail-leak; dragRevertErrorCopy). Client Vitest **47/47** (was 34); `tsc -b` + `vite build` clean.
+- **Code review**: inline, 0 blocking — GP5-compliant, matches existing file style/JSDoc density, single-origin relative paths preserved.
+- **No new deps/config/architecture patterns** in this phase (frontend-only extension of existing apiClient). `@dnd-kit` (Phase 4) and the realtime tier + `REALTIME_*` env vars (Phase 5) are deferred to their phases.
+
 ## Reflection: TASK-006 (React frontend board UI) — REFLECTION_COMPLETE
 
 **Date**: 2026-06-21
