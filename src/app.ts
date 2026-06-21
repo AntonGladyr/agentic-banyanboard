@@ -16,14 +16,19 @@
  *                             exist for every route that follows.
  *   2. /health router       — liveness probe (AC-HAPPY-1).
  *   3. /api/v1 router        — versioned API scaffold (AC-HAPPY-2).
+ *   3b.[Phase 5] SPA serving — OPTIONAL static `client/dist` + history fallback, gated by
+ *                             config.serveClient, registered AFTER /api/v1 + /health and BEFORE
+ *                             notFound so API/health misses keep their JSON 404 (TASK-006 AC-NAV-1).
  *   4. [Phase 4] notFound + errorHandler — appended LAST (see marker below).
  */
 
 import express from 'express';
 import type { Express } from 'express';
+import { config } from './config/env';
 import { requestLogger } from './middleware/requestLogger';
 import { healthRouter } from './routes/health';
 import { apiRouter } from './routes/index';
+import { registerClientServing } from './middleware/serveClient';
 import { notFound } from './middleware/notFound';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -46,6 +51,14 @@ export function createApp(): Express {
 
   // 3. Versioned API scaffold.
   app.use('/api/v1', apiRouter);
+
+  // 3b. Optional SPA static serving + history fallback (prod single-origin). Gated behind
+  //     SERVE_CLIENT so dev/test/supertest are unaffected. Registered here — after /api/v1 and
+  //     /health, before notFound — so API/health misses still receive the structured JSON 404 and
+  //     never the SPA shell (TASK-006 AC-NAV-1 / Architecture Q1c).
+  if (config.serveClient) {
+    registerClientServing(app);
+  }
 
   // 4. Terminal 404 catch-all — any request no router above matched falls through to here and
   //    receives a structured JSON 404 (never Express's default HTML page).

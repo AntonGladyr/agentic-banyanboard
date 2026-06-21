@@ -93,6 +93,8 @@ See `memory-bank/creative/TASK-001-express-api-architecture.md` § Observability
 | `npm run typecheck` | Type-check only (`tsc -b`) |
 | `npm test` | Run the Vitest suite once |
 | `npm run test:watch` | Vitest in watch mode |
+| `npm run e2e:install` | One-time: install the Playwright Chromium binary |
+| `npm run e2e` | Build client + backend, then run the Playwright E2E suite (`client/e2e/`) against the real Express-served build (`SERVE_CLIENT=true`, port 3100, override via `E2E_PORT`) |
 
 ## Configuration Variables
 
@@ -111,6 +113,8 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Collector endpoint (stub — no exporter built this phase) | — |
 | `OTEL_TRACES_SAMPLER_ARG` | Sampling ratio (reserved for future SDK wiring) | `1.0` |
 | `DATABASE_URL` | PostgreSQL DSN (stub — configurable, NOT connected) | — |
+| `SERVE_CLIENT` | Enable Express static serving of the built SPA + SPA history fallback (prod single-origin; AC-NAV-1). Parsed fail-fast (`true`/`false`/`1`/`0`) | `false` |
+| `CLIENT_DIST_PATH` | Filesystem path to the built SPA assets served when `SERVE_CLIENT=true` | `client/dist` |
 
 **Frontend (`client/`)** — Vite env vars (build-time, `VITE_`-prefixed; read in `vite.config.ts`):
 
@@ -118,7 +122,7 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 |----------|---------|---------|
 | `VITE_API_PROXY_TARGET` | Dev-only: target the Vite dev-server proxy forwards `/api/v1` + `/health` to | `http://localhost:3000` |
 
-(`SERVE_CLIENT` / `CLIENT_DIST_PATH` backend vars for prod static serving land in Phase 5.)
+(`SERVE_CLIENT` / `CLIENT_DIST_PATH` — backend prod static-serving vars, implemented in Phase 5 — are listed in the backend table above.)
 
 > Note: neither `.env.example` (backend) nor `client/.env.development` (frontend) could be created automatically — both blocked by the `Edit(.env.*)` deny rule. The frontend proxy target has a code default in `vite.config.ts`, so the dotenv file is optional; the override is documented in `client/README.md`. Backend `.env.example` flagged for manual creation.
 
@@ -132,4 +136,4 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 
 ## Last Refreshed
 
-2026-06-20 (TASK-006 Phase 2 — added Frontend Tier `client/`)
+2026-06-21 (TASK-006 Phase 5 — added Express SPA static-serve (`SERVE_CLIENT`/`CLIENT_DIST_PATH`) + Playwright E2E)

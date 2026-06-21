@@ -23,6 +23,10 @@ const DEFAULTS = {
   otelServiceName: 'banyanboard-api',
   serviceVersion: '0.0.0',
   otelTracesSamplerArg: '1.0',
+  // SPA static serving is OFF by default so dev (Vite serves the SPA), tests, and supertest are
+  // unaffected; only prod opts in via SERVE_CLIENT=true (TASK-006 Phase 5 / Architecture Q1c).
+  serveClient: false,
+  clientDistPath: 'client/dist',
 } as const;
 
 /** Shape of the validated application configuration. */
@@ -49,6 +53,13 @@ export interface AppConfig {
   readonly otelTracesSamplerArg: string;
   /** PostgreSQL DSN (DATABASE_URL) — stub, configurable but NOT connected this task. */
   readonly databaseUrl: string | undefined;
+  /**
+   * Enable Express static serving of the built SPA + SPA history fallback (SERVE_CLIENT).
+   * `false` in dev/test (Vite serves the SPA); `true` in the single-origin prod image.
+   */
+  readonly serveClient: boolean;
+  /** Filesystem path to the built SPA assets served when {@link serveClient} is true (CLIENT_DIST_PATH). */
+  readonly clientDistPath: string;
 }
 
 /**
@@ -89,6 +100,29 @@ function parsePort(raw: string | undefined, fallback: number): number {
 }
 
 /**
+ * Coerce a boolean-like env value, failing fast on unrecognized input (consistent with
+ * {@link parsePort}). Recognized true tokens: `true`/`1`; false tokens: `false`/`0` (all
+ * case-insensitive). Unset falls back to the provided default.
+ */
+function parseBool(raw: string | undefined, fallback: boolean): boolean {
+  if (raw === undefined) {
+    return fallback;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === 'true' || normalized === '1') {
+    return true;
+  }
+  if (normalized === 'false' || normalized === '0') {
+    return false;
+  }
+
+  throw new Error(
+    `Invalid boolean env value: expected one of true/false/1/0, received "${raw}".`,
+  );
+}
+
+/**
  * Build and validate the configuration from the current `process.env`.
  * Throws synchronously on invalid values (fail-fast at startup).
  */
@@ -106,6 +140,8 @@ function loadConfig(): AppConfig {
     otelTracesSamplerArg:
       readEnv('OTEL_TRACES_SAMPLER_ARG') ?? DEFAULTS.otelTracesSamplerArg,
     databaseUrl: readEnv('DATABASE_URL'),
+    serveClient: parseBool(readEnv('SERVE_CLIENT'), DEFAULTS.serveClient),
+    clientDistPath: readEnv('CLIENT_DIST_PATH') ?? DEFAULTS.clientDistPath,
   };
 }
 

@@ -1,7 +1,7 @@
 # TASK-006: React frontend board UI
 
 **Complexity**: Level 3
-**Status**: CREATIVE_COMPLETE
+**Status**: BUILD_COMPLETE
 **Roadmap**: FEAT-006
 **Branch**: feature/FEAT-006-react-frontend-board-ui
 **Worktree**: N/A
@@ -338,7 +338,7 @@ TASK-006 introduces the project's first frontend tier (a read-only React SPA) an
 - [x] Phase 2: Frontend foundation — build tooling, project layout, dev proxy, client-side routing skeleton, typed API client + shared types, app shell, ErrorBoundary + errorReporter, Vitest + RTL — COMPLETE (2026-06-20). (Prod static serving deferred to Phase 5 per Architecture creative phase mapping.)
 - [x] Phase 3: Board list page (`/`) — fetch + render boards, navigable entries, empty/loading/error states → delivers AC-ENTRY-1, AC-ENTRY-2, AC-ERROR-1 (list), AC-LOADING-1 (list) — COMPLETE (2026-06-20)
 - [x] Phase 4: Board view page (`/boards/:id`) — three status-mapped columns, card display, empty-column/loading/error-404 states, back-nav, direct-URL nav → delivers AC-HAPPY-1/2/3, AC-ERROR-2, AC-LOADING-1 (view), AC-NAV-1 — COMPLETE (2026-06-21)
-- [ ] Phase 5: E2E tests + serving verification — implement entry-to-success E2E specs, verify full journeys and dev/prod serving (post-UAT per Level 3 flow)
+- [x] Phase 5: E2E tests + serving verification — Express static-serve + SPA history fallback (`SERVE_CLIENT`/`CLIENT_DIST_PATH`, AC-NAV-1) + Playwright E2E journeys → COMPLETE (2026-06-21)
 
 ## Creative Phases
 
@@ -349,20 +349,44 @@ TASK-006 introduces the project's first frontend tier (a read-only React SPA) an
 
 ## Execution State
 
-**Build Status**: COMPLETE (Phase 4 of 5)
+**Build Status**: BUILD_COMPLETE (all 5 phases)
 **Current Phase**: BUILD
-**Current Build**: Phase 4: Board view page (`/boards/:id`) — three status-mapped columns, card display, empty-column/loading/error-404 states, back-nav, direct-URL nav (AC-HAPPY-1/2/3, AC-ERROR-2, AC-LOADING-1, AC-NAV-1) — COMPLETE
-**Phase Number**: 4 of 5
+**Current Build**: Phase 5: E2E tests + serving verification — Express static-serve + SPA history fallback (`SERVE_CLIENT`/`CLIENT_DIST_PATH`, AC-NAV-1) and Playwright E2E journeys — COMPLETE
+**Phase Number**: 5 of 5
 **Is Multi-Phase**: YES
 **Build Started**: 2026-06-21
-**Current Step**: Phase 4 complete — awaiting human review, then /banyan-uat (Level 3 flow) or /banyan-build TASK-006 (Phase 5)
-**Last Completed**: BUILD Phase 4/5 (2026-06-21)
+**Current Step**: All phases complete — awaiting human review of Phase 5 commit, then /banyan-reflect → /banyan-archive
+**Last Completed**: BUILD Phase 5/5 (2026-06-21)
 **Can Resume**: NO
 **Branch**: feature/FEAT-006-react-frontend-board-ui (created from master 2026-06-20)
 
+### Current Build Step (Phase 5)
+**Step**: Step 11 — Git Completion (Phase 5)
+**Status**: COMPLETE — committed to feature/FEAT-006-react-frontend-board-ui (NOT pushed; push deferred to human / archive per project config).
+**Completed**: 2026-06-21
+
+### Build Completed Steps (Phase 5)
+- Step 0.5 Git Setup: COMPLETE — on feature/FEAT-006-react-frontend-board-ui (in-tree, no worktree).
+- Step 0.6 Phase Gate: COMPLETE — roadmap populated; both creative phases COMPLETE; Phases 1–4 done.
+- Step 1 Read Task Context: COMPLETE — Phase 5 (E2E + serving) identified, Level 3.
+- Step 2 Load Context: COMPLETE — Architecture creative Q1c/Q1e (gated static-serve + SPA fallback, createApp composition sketch) + Q3b (Playwright) reviewed; backend env/app/notFound + client pages/components/apiClient reviewed.
+- Step 3 Test Writer (orchestrator-authored, TDD): COMPLETE — env.test.ts +4; src/middleware/serveClient.test.ts +7 (supertest w/ temp fixture dist).
+- Step 4 Coding Agent (orchestrator-authored): COMPLETE — env.ts (`serveClient`/`clientDistPath` + fail-fast `parseBool`); serveClient.ts (`registerClientServing`: express.static + history fallback); app.ts wiring (gated, after /api/v1+/health, before notFound). Playwright: playwright.config.ts, e2e/fixtures.ts, e2e/board-journeys.spec.ts (7 specs); client/package.json (@playwright/test + e2e scripts); .gitignore (PW artifacts).
+- Steps 5–7 Test/Build/Integration: COMPLETE — backend Jest 138/138; backend `tsc` clean; client Vitest 34/34 (e2e excluded); client `tsc -b`+`vite build` clean; **Playwright 7/7** against the real Express-served build (port 3100).
+- Step 8 Code Review: COMPLETE — independent build-code-reviewer-agent **APPROVED, 0 blocking** (fallback never shadows API; non-GET excluded; defaults off; matches architecture doc; prod-dep audit clean). Applied nit #2 (uniform fixture timestamps via `makeBoard`); nits #1/#3 no-action.
+- Steps 9–10 Docs/Memory Bank: COMPLETE — progress.md (Phase 5 section + status header), techContext.md (e2e commands, `SERVE_CLIENT`/`CLIENT_DIST_PATH`, Last Refreshed), tasks.md registry (BUILD_COMPLETE 5/5), this file.
+
+### Phase 5 Notes / Deviations (for reflection)
+- **AC-NAV-1 fully realized**: dev relied on Vite's history fallback; prod now uses the Express `SERVE_CLIENT` static-serve + SPA history fallback. The E2E `webServer` runs the genuine `node dist/index.js` with `SERVE_CLIENT=true`, so AC-NAV-1 (direct load + reload of `/boards/:id`) is verified against the real production serving path.
+- **E2E is hermetic / DB-free**: the read API is mocked via `page.route('**/api/v1/**')`; only document/asset requests hit Express. No Postgres, migration, or seed step is required to run the suite — a deliberate choice over the architecture doc's "seeded against real Postgres" so the regression layer stays deterministic and CI-friendly. A future seeded-DB E2E variant remains a clean follow-up if true end-to-end DB coverage is later desired.
+- **Dedicated E2E port 3100** (override `E2E_PORT`) avoids colliding with a dev server on 3000; `reuseExistingServer` off in CI.
+- **Playwright Chromium binary** is a local, git-ignored install (`npm run e2e:install`); `@playwright/test` is the only new dependency (client devDep). No new backend dependency — uses built-in `express.static`/`res.sendFile`.
+- **Carried Phase 2 self-dep gotcha recurred**: `npm install --prefix client` from repo root re-injected `agentic-banyanboard: file:..`; removed from package.json + lockfile and reinstalled inside `client/`. Reaffirm: run client installs from within `client/`.
+- **`ErrorMessage.backLink` still unused** (noted Phase 4) — left in place, harmless; reflection may decide to prune.
+
 ### Current Build Step (Phase 4)
 **Step**: Step 11 — Git Completion (Phase 4)
-**Status**: COMPLETE — committed to feature/FEAT-006-react-frontend-board-ui (NOT pushed; push deferred to human / archive per project config).
+**Status**: COMPLETE — committed `178123a` to feature/FEAT-006-react-frontend-board-ui (NOT pushed; push deferred to human / archive per project config).
 **Completed**: 2026-06-21
 
 ### Build Completed Steps (Phase 4)
