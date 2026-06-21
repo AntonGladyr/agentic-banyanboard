@@ -118,3 +118,14 @@ Chronological record of pattern extraction and consolidation events from task re
 
 ### systemPatterns.md Updates
 - None (all three learnings are coding/test-harness/tooling practices, not novel architecture patterns; the frontend tier's structural decisions are already captured in the Architecture creative doc and techContext.md rather than systemPatterns Guiding Principles)
+
+---
+
+## 2026-06-21 - Consolidation (during TASK-006 archive)
+
+- Files before: 6, Files after: 6
+- Merged: 0 files (no pair has >50% topic/glob overlap — frontend.md shares only the `error-handling` topic with error-handling.md but applies to a disjoint glob set `client/src/**` vs `src/**`)
+- Expired: 0 bullets (oldest bullet 5 days old — all within the 90-day window)
+- Promoted: 0 files (testing-patterns + api-design already medium; frontend evidence_count 2, tooling evidence_count 2, error-handling/typescript-config 1 — all < threshold 3)
+- Pruned: 0 excess bullets (max 5 bullets/file < max 15)
+- Reindexed: regenerated `agent-rules-index.md` (5 → 6 files; refreshed stale globs/topics/priorities for api-design, tooling, testing-patterns; added Frontend rule)

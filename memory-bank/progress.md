@@ -90,6 +90,15 @@ Recommendation: ready to archive. Next: /banyan-archive TASK-006.
 
 ---
 
+## Task Archive: TASK-006
+
+**Task**: React frontend board UI
+**Status**: ✅ ARCHIVED
+**Date**: 2026-06-21
+**Archive**: `memory-bank/archive/archive-TASK-006.md`
+
+---
+
 ## Task Archive: TASK-005
 
 **Task**: Card model with CRUD endpoints
