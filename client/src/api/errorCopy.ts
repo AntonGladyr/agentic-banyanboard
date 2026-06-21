@@ -64,6 +64,19 @@ export function boardViewErrorCopy(category: ApiErrorCategory): ErrorCopy {
   }
 }
 
+// ─── Client-side validation copy (TASK-007 Phase 2) ───────────────────────────
+
+/**
+ * Canonical client-side validation messages for the create/edit forms (AC-ERROR-1, AC-ERROR-2).
+ * These are shown inline (`role="alert"`) BEFORE any API call when a required field is empty — they
+ * are not keyed on an `ApiErrorCategory` because no request is made. Kept here so the forms and their
+ * tests share one source of truth.
+ */
+export const VALIDATION_COPY = {
+  boardNameRequired: 'Board name is required',
+  cardTitleRequired: 'Card title is required',
+} as const;
+
 // ─── Write-error copy (TASK-007 Phase 1) ──────────────────────────────────────
 
 /**

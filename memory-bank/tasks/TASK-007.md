@@ -519,7 +519,7 @@ Frontend write foundation → board forms → card forms → drag-and-drop → r
 ## Implementation Roadmap
 
 - [x] Phase 1: Frontend write foundation — extend `apiClient.ts` with a `sendJson` helper + write wrappers (`createBoard`/`updateBoard`/`createCard`/`updateCard`/`updateCardStatus`), request/payload types, and write/validation/rollback error copy → enables all subsequent forms (GP5-safe error mapping) ✅ COMPLETE (2026-06-21)
-- [ ] Phase 2: Create/edit board UI — create-board entry point + form on `/`, edit-board affordance + form on `/boards/:id`, validation/cancel/loading/error → delivers AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-1, AC-ERROR-3 (board), AC-LOADING-1 (board), AC-NAV-1 (board)
+- [x] Phase 2: Create/edit board UI — create-board entry point + form on `/`, edit-board affordance + form on `/boards/:id`, validation/cancel/loading/error → delivers AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-1, AC-ERROR-3 (board), AC-LOADING-1 (board), AC-NAV-1 (board) ✅ COMPLETE (2026-06-21) — Dialog primitive, BoardForm, clientId.ts, VALIDATION_COPY; 70/70 client tests
 - [ ] Phase 3: Create/edit card UI — per-column add-card affordance + create form, edit-card affordance + form, validation/cancel/loading/error → delivers AC-ENTRY-2, AC-HAPPY-3, AC-HAPPY-4, AC-ERROR-2, AC-ERROR-3 (card), AC-LOADING-1 (card), AC-NAV-1 (card)
 - [ ] Phase 4: Drag-and-drop status change — `@dnd-kit` drag source/drop target, optimistic move + rollback, keyboard alternative (WCAG SC 2.1.1), `status` persistence via existing PATCH → delivers AC-HAPPY-5, AC-ERROR-4
 - [ ] Phase 5: Real-time collaboration — new backend transport (Architecture-chosen) + board-scoped broadcast wired into mutation paths + env/observability; frontend subscription hook with echo de-dup → delivers AC-REALTIME-1, AC-REALTIME-2
@@ -538,12 +538,34 @@ Frontend write foundation → board forms → card forms → drag-and-drop → r
 ## Build Execution State
 
 **Build Status**: RUNNING
-**Current Build**: Phase 1: Frontend write foundation (TASK-007)
+**Current Build**: Phase 2: Create/edit board UI (TASK-007)
 **Build Started**: 2026-06-21
-**Phase Number**: 1 of 6
+**Phase Number**: 2 of 6
 **Is Multi-Phase**: YES
 
 ### Current Build Step
+**Step**: Phase 2 COMPLETE — committed; awaiting human review before Phase 3
+**Status**: COMPLETE
+**Completed**: 2026-06-21
+
+### Completed Steps (Phase 2)
+- Step 0.1 Resumption/Rules Check: COMPLETE — new build (Phase 1 done); agent-rules index current
+- Step 0.5 Git Setup: COMPLETE — on feature/FEAT-007-board-interactivity-realtime-collab, clean tree, local-merge (no remote/worktree)
+- Step 0.6 Phase Gate: COMPLETE — roadmap populated, both creative phases COMPLETE (Architecture + UI/UX), Level 3
+- Step 1 Read Task Context: COMPLETE — Phase 2 = create/edit board UI (modal create-board, inline edit-board)
+- Step 2 Load Context: COMPLETE — Level 3 frontend phase; UI/UX creative Spec 1/2/3 are authoritative
+- Step 3 Test Writer (RED): COMPLETE — 23 new tests (Dialog 4, BoardForm 10, BoardListPage +6, BoardViewPage +5)
+- Step 4 Coding Agent (GREEN): COMPLETE — Dialog + BoardForm + clientId.ts + VALIDATION_COPY; wired BoardListPage (create) + BoardViewPage (inline edit)
+- Step 7 Integration Verify: COMPLETE — client Vitest 70/70; `tsc -b` + `vite build` clean; no ESLint (strict tsc is the lint gate)
+- Step 8 Code Review: COMPLETE — 0 blocking; GP5-safe, XSS-safe, full a11y, FEAT-006-consistent
+- Step 9/10 Docs + Memory Bank: COMPLETE — no new deps/config/patterns; progress.md + tasks.md + roadmap updated
+
+### Resumption Notes (Phase 2)
+**Can Resume**: NO
+**Resume From**: Phase 3 (next /banyan-build TASK-007 Phase3)
+**Notes**: Phase 2 done. Phase 3 = create/edit card UI — CardForm (title+description), inline add-card in Column footer (status pre-scoped to column), edit-card via Dialog from CardItem. Reuse the Dialog primitive + the BoardForm state-machine pattern. clientId/X-Client-Id already plumbed.
+
+### Phase 1 (previous) — Current Build Step
 **Step**: Phase 1 COMPLETE — committed; awaiting human review before Phase 2
 **Status**: COMPLETE
 **Completed**: 2026-06-21

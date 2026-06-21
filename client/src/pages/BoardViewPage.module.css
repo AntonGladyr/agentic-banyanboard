@@ -20,14 +20,52 @@
   border-radius: var(--radius-sm);
 }
 
+/* UI/UX creative Spec 3: board name + inline edit affordance on one row. */
+.headingRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
 .heading {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
-  margin-bottom: var(--space-6);
 }
 
 .heading:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
   border-radius: var(--radius-sm);
+}
+
+/* Edit-board pencil button — reveals the inline rename form (Spec 3). */
+.editBoard {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.editBoard:hover {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.editBoard:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Inline edit-board form occupies the heading slot while editing. */
+.editBoardRow {
+  margin-bottom: var(--space-6);
+  max-width: 520px;
 }

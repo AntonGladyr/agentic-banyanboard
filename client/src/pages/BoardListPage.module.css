@@ -6,10 +6,41 @@
   margin: 0 auto;
 }
 
+/* UI/UX creative Spec 2: heading + "New Board" action on one row. */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
 .heading {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
-  margin-bottom: var(--space-6);
+}
+
+.newBoard {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-inverse);
+  background-color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.newBoard:hover {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+.newBoard:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .heading:focus-visible {

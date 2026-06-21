@@ -18,6 +18,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { BoardViewPage } from './BoardViewPage';
 import { ApiError } from '../api/apiClient';
@@ -27,11 +28,12 @@ import type { Board, Card } from '../api/types';
 // Mock the apiClient but keep the real ApiError class so `instanceof` / category mapping work.
 vi.mock('../api/apiClient', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/apiClient')>();
-  return { ...actual, getBoard: vi.fn(), getCards: vi.fn() };
+  return { ...actual, getBoard: vi.fn(), getCards: vi.fn(), updateBoard: vi.fn() };
 });
 
 const getBoardMock = vi.mocked(apiClient.getBoard);
 const getCardsMock = vi.mocked(apiClient.getCards);
+const updateBoardMock = vi.mocked(apiClient.updateBoard);
 
 /** Render the board view at `/boards/:id` so `useParams` resolves the id like the real router. */
 function renderPageAt(id: number | string): void {
@@ -187,5 +189,63 @@ describe('BoardViewPage', () => {
     await screen.findByRole('alert');
     expect(screen.queryByText(/internal-detail/)).not.toBeInTheDocument();
     expect(screen.queryByText(/db\.query/)).not.toBeInTheDocument();
+  });
+
+  // ─── Edit board (TASK-007 Phase 2) ────────────────────────────────────────
+
+  it('renders an edit affordance for the board name on success (AC-HAPPY-2)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    renderPageAt(1);
+
+    expect(await screen.findByRole('button', { name: /edit board name/i })).toBeInTheDocument();
+  });
+
+  it('enters inline edit mode with the current name pre-filled (AC-HAPPY-2)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    renderPageAt(1);
+
+    await user.click(await screen.findByRole('button', { name: /edit board name/i }));
+
+    expect(screen.getByRole('textbox', { name: /board name/i })).toHaveValue('Alpha Project');
+  });
+
+  it('saves an edited board name and updates the heading in place (AC-HAPPY-2)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    updateBoardMock.mockResolvedValue({ ...board, name: 'Alpha Project v2' });
+    renderPageAt(1);
+
+    await user.click(await screen.findByRole('button', { name: /edit board name/i }));
+    const input = screen.getByRole('textbox', { name: /board name/i });
+    await user.clear(input);
+    await user.type(input, 'Alpha Project v2');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Alpha Project v2' })).toBeInTheDocument();
+    expect(updateBoardMock).toHaveBeenCalledWith(
+      '1',
+      { name: 'Alpha Project v2', description: 'Sprint planning and engineering tasks' },
+      expect.anything(),
+    );
+    // The browser tab title reflects the new name.
+    expect(document.title).toBe('BanyanBoard — Alpha Project v2');
+  });
+
+  it('cancels inline edit without calling updateBoard and restores the heading (AC-NAV-1)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    renderPageAt(1);
+
+    await user.click(await screen.findByRole('button', { name: /edit board name/i }));
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Alpha Project' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /board name/i })).not.toBeInTheDocument();
+    expect(updateBoardMock).not.toHaveBeenCalled();
   });
 });

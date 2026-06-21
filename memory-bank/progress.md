@@ -2,6 +2,25 @@
 
 ---
 
+## Build Phase: TASK-007 (Board interactivity & real-time) — Phase 2/6 COMPLETE
+
+**Date**: 2026-06-21
+**Status**: Phase 2 of 6 complete on branch `feature/FEAT-007-board-interactivity-realtime-collab` (local-merge, no remote) → next: human review, then `/banyan-build TASK-007` for Phase 3 (create/edit card UI)
+
+#### Phase 2 — Create/edit board UI — COMPLETE
+- **New `client/src/components/Dialog/`** (`Dialog.tsx` + `.module.css` + test): reusable modal primitive on the native HTML `<dialog>` element (UI/UX creative Spec 1) — `open`/`title`/`onClose`/`children` props, `::backdrop` overlay, focus moved to the first field on open, focus returned to the trigger on close, close (×) button + Escape both call `onClose`. `showModal()` is guarded (falls back to the `open` attribute) so the same component runs under jsdom and in the browser (GP4 — no new deps).
+- **New `client/src/components/BoardForm/`** (`BoardForm.tsx` + `.module.css` + test): content-only name+description form reused in two contexts (Dialog for create, inline for edit). Owns its own `idle|submitting|error` state machine (matches the FEAT-006 page pattern); blank/whitespace name blocks submit with an inline `role="alert"` (AC-ERROR-1), valid submit calls the parent `onSubmit` with trimmed values (empty description → `null`), submit disabled while in flight (AC-LOADING-1), `onSubmit` rejection maps to `writeErrorCopy` (GP5-safe) with input preserved (AC-ERROR-3), Cancel/Escape → `onCancel` (AC-NAV-1), optional `autoFocus` for the inline edit context. Never imports the apiClient — the page chooses `createBoard` vs `updateBoard`.
+- **New `client/src/api/clientId.ts`**: `getClientId()` — lazy per-tab UUID (the consumer of the `originId`/`X-Client-Id` param Phase 1 plumbed; Phase 5 echo-de-dup). Passed on every Phase-2 write.
+- **`client/src/api/errorCopy.ts`**: added `VALIDATION_COPY` (`boardNameRequired`/`cardTitleRequired`) — canonical client-side validation strings shared by forms + tests.
+- **`client/src/pages/BoardListPage.tsx`** (+ `.module.css`): "New Board" action in a header flex row (AC-ENTRY-1) opens the create-board Dialog; on success the created board is appended to the in-memory list so it appears immediately without a refetch (AC-HAPPY-1); failure keeps the dialog open with input preserved (AC-ERROR-3).
+- **`client/src/pages/BoardViewPage.tsx`** (+ `.module.css`): edit (✎) button next to the board name (AC-HAPPY-2) swaps the heading for an inline BoardForm pre-filled with name+description; save updates the heading + document title in place (no reload); Cancel/Escape restores the heading with no API call (AC-NAV-1) and returns focus to the edit button.
+- **Tests (+23)**: Dialog 4, BoardForm 10, BoardListPage +6 (New Board affordance, opens dialog, end-to-end create appends to list, cancel = no API, server-failure keeps dialog open + preserves input), BoardViewPage +5 (edit affordance, enters edit pre-filled, save updates heading + title, cancel = no API). Client Vitest **70/70** (was 47); `tsc -b` + `vite build` clean. No ESLint in project — strict `tsc` (noUnusedLocals/Params, noUncheckedIndexedAccess) is the lint gate.
+- **Code review**: 0 blocking — GP5-safe (copy keyed on category only), XSS-safe controlled inputs, full a11y (role=alert, aria-invalid/describedby/labelledby, focus mgmt + return, Escape, native-dialog focus trap), consistent with FEAT-006 conventions.
+- **No new deps/config/architecture patterns** in this phase (native `<dialog>`, no library). `@dnd-kit` (Phase 4) and the realtime tier + `REALTIME_*` env vars (Phase 5) remain deferred.
+- **ACs delivered**: AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-1, AC-ERROR-3 (board), AC-LOADING-1 (board), AC-NAV-1 (board).
+
+---
+
 ## Build Phase: TASK-007 (Board interactivity & real-time) — Phase 1/6 COMPLETE
 
 **Date**: 2026-06-21
