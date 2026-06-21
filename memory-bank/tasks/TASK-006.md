@@ -356,6 +356,10 @@ TASK-006 introduces the project's first frontend tier (a read-only React SPA) an
 **Current Phase**: COMPLETE
 **Current Step**: Archived — task closed (local-merge to master)
 **Reflection Commit**: a93300a
+**Merge Status**: merged
+**Merge Commit**: 8636c2c (master)
+**Worktree Cleaned**: N/A (in-tree, no worktree)
+**Branch Deleted**: YES (feature/FEAT-006-react-frontend-board-ui)
 **Can Resume**: NO
 **Current Build**: Phase 5: E2E tests + serving verification — Express static-serve + SPA history fallback (`SERVE_CLIENT`/`CLIENT_DIST_PATH`, AC-NAV-1) and Playwright E2E journeys — COMPLETE
 **Phase Number**: 5 of 5
