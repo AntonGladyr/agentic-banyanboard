@@ -1,7 +1,8 @@
 # TASK-006: React frontend board UI
 
 **Complexity**: Level 3
-**Status**: BUILD_COMPLETE
+**Status**: REFLECTION_COMPLETE
+**Reflection**: memory-bank/reflection/reflection-TASK-006.md
 **Roadmap**: FEAT-006
 **Branch**: feature/FEAT-006-react-frontend-board-ui
 **Worktree**: N/A
@@ -349,15 +350,15 @@ TASK-006 introduces the project's first frontend tier (a read-only React SPA) an
 
 ## Execution State
 
-**Build Status**: BUILD_COMPLETE (all 5 phases)
-**Current Phase**: BUILD
+**Build Status**: IDLE
+**Current Phase**: REFLECT → ARCHIVE
+**Current Step**: Reflection COMPLETE — ready for /banyan-archive
+**Can Resume**: NO
 **Current Build**: Phase 5: E2E tests + serving verification — Express static-serve + SPA history fallback (`SERVE_CLIENT`/`CLIENT_DIST_PATH`, AC-NAV-1) and Playwright E2E journeys — COMPLETE
 **Phase Number**: 5 of 5
 **Is Multi-Phase**: YES
 **Build Started**: 2026-06-21
-**Current Step**: All phases complete — awaiting human review of Phase 5 commit, then /banyan-reflect → /banyan-archive
 **Last Completed**: BUILD Phase 5/5 (2026-06-21)
-**Can Resume**: NO
 **Branch**: feature/FEAT-006-react-frontend-board-ui (created from master 2026-06-20)
 
 ### Current Build Step (Phase 5)

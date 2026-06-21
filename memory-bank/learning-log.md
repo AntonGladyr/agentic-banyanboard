@@ -106,3 +106,15 @@ Chronological record of pattern extraction and consolidation events from task re
 - Expired: 0 bullets (oldest bullet 2 days old — all within the 90-day window)
 - Promoted: 0 files (api-design already promoted to medium during the TASK-005 reflection; testing-patterns already medium; error-handling/typescript-config/tooling all evidence_count 1 < threshold 3)
 - Pruned: 0 excess bullets (max 4 bullets/file < max 15)
+
+---
+
+## 2026-06-21 - TASK-006 Reflection
+
+### Extracted Patterns
+- **frontend** → **created** `agent-rules/_learned/frontend.md` (evidence count: 2) — the project's first frontend topic file (new architectural tier). Two consolidated bullets: (1) model a page's fetch lifecycle with a discriminated-union `LoadState` + one `AbortController` per `useEffect` + `signal.aborted` guard before `setState`; (2) key all user-facing error copy on a safe `ApiError.category` enum in a centralized `errorCopy.ts`, never passing raw error detail to components (GP5). Stays low (new file; evidence_count 2 < promotion threshold 3).
+- **tooling** → amended `agent-rules/_learned/tooling.md` (evidence count: 1 → 2) — install subpackage deps from within the subpackage dir, never `npm install --prefix <subdir>` from the repo root (injects a self-referencing `file:..` dep). Globs widened to include `**/package.json`; `npm`/`monorepo` topics added. (Stays low — evidence_count 2 < threshold 3.)
+- **testing-patterns** → amended `agent-rules/_learned/testing-patterns.md` (evidence count: 4 → 5) — hermetic Playwright E2E via `page.route('**/api/v1/**')` against a real built server, with a seeded-DB variant deferred as a follow-up. Globs widened to include `client/e2e/**` + `**/*.spec.ts`; `e2e`/`playwright` topics added. (Already medium.)
+
+### systemPatterns.md Updates
+- None (all three learnings are coding/test-harness/tooling practices, not novel architecture patterns; the frontend tier's structural decisions are already captured in the Architecture creative doc and techContext.md rather than systemPatterns Guiding Principles)

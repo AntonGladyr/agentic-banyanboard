@@ -2,6 +2,21 @@
 
 ---
 
+## Reflection: TASK-006 (React frontend board UI) — REFLECTION_COMPLETE
+
+**Date**: 2026-06-21
+**Document**: memory-bank/reflection/reflection-TASK-006.md
+**Dimensions Evaluated**: Task Quality, Ecosystem Effectiveness
+
+- **Task Quality: Excellent** — all 10 ACs satisfied with direct test/E2E evidence; 66 net-new tests (backend Jest 113→138, frontend Vitest 9→34, Playwright 7/7 E2E — total 179, well above the 32–40 estimate in the quality direction); 0 blocking code-review findings across all 5 phases; zero mid-phase design reversals; both creative docs held as implementation contracts. Project's first frontend tier delivered cleanly (backend `status` field + read-only React SPA).
+- **Ecosystem Effectiveness: Moderately Effective** — creative-phase-as-implementation-contract (canonical copy/paths/tokens) eliminated design re-derivation across all 5 build phases. Recurring friction: by-task session logs absent for the **6th consecutive task** (now an overdue tracked defect); `Edit(.env.*)` guardrail blocked `client/.env.development` (code-default workaround); no frontend context file exists in the plugin for the new tier.
+- **Continuous learning**: 4 learnings extracted → **1 created** (`frontend.md` — first frontend topic: LoadState+AbortController fetch machine; centralized safe `errorCopy.ts` keyed on `ApiError.category`), **2 amended** (`tooling.md` evidence 1→2: `npm install --prefix` self-dep gotcha; `testing-patterns.md` evidence 4→5: hermetic Playwright E2E via `page.route` against a real built server). systemPatterns unchanged.
+- **Carried follow-ups**: seeded-DB E2E variant; multi-stage Dockerfile for single-image prod serving; prune unused `ErrorMessage.backLink` prop; OpenAPI spec (carried from TASK-004/005); `node-pg-migrate` dev-tree audit triage.
+
+Recommendation: ready to archive. Next: /banyan-archive TASK-006.
+
+---
+
 ## Build Phase: TASK-006 (React frontend board UI) — BUILD COMPLETE
 
 **Date**: 2026-06-21
