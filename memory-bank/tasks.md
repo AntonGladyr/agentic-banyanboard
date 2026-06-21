@@ -7,4 +7,4 @@
 | TASK-003 | Health check endpoint with tests | ARCHIVE | COMPLETE            | FEAT-003 |
 | TASK-004 | Board model with CRUD endpoints  | ARCHIVE | COMPLETE            | FEAT-005 |
 | TASK-005 | Card model with CRUD endpoints   | ARCHIVE | COMPLETE            | FEAT-004 |
-| TASK-006 | React frontend board UI          | BUILD   | Phase 2/5           | FEAT-006 |
+| TASK-006 | React frontend board UI          | BUILD   | Phase 3/5           | FEAT-006 |

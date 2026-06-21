@@ -7,10 +7,18 @@
  * covered by Phase 3/4 component tests.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { App } from './App';
+
+// The `/` route now renders the live-fetching BoardListPage (Phase 3). Mock the API client so the
+// routing smoke test stays deterministic and fires no real network request — the board list always
+// renders its `Boards` heading regardless of the resolved data.
+vi.mock('./api/apiClient', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/apiClient')>();
+  return { ...actual, getBoards: vi.fn().mockResolvedValue([]) };
+});
 
 function renderAt(path: string): void {
   render(
@@ -21,9 +29,11 @@ function renderAt(path: string): void {
 }
 
 describe('App routing skeleton', () => {
-  it('renders the board list page at "/"', () => {
+  // The board list page fetches on mount; `findBy*` waits for the settled state so the trailing
+  // state update is flushed inside act (no warning), while still asserting the route rendered.
+  it('renders the board list page at "/"', async () => {
     renderAt('/');
-    expect(screen.getByRole('heading', { level: 1, name: 'Boards' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Boards' })).toBeInTheDocument();
   });
 
   it('renders the board view page at "/boards/:id" with a back-to-boards link', () => {
@@ -32,8 +42,8 @@ describe('App routing skeleton', () => {
     expect(screen.getByRole('link', { name: /Back to boards/ })).toBeInTheDocument();
   });
 
-  it('always renders the BanyanBoard app-shell brand link', () => {
+  it('always renders the BanyanBoard app-shell brand link', async () => {
     renderAt('/');
-    expect(screen.getByRole('link', { name: 'BanyanBoard' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'BanyanBoard' })).toBeInTheDocument();
   });
 });
