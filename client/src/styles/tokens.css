@@ -1,0 +1,80 @@
+/**
+ * client/src/styles/tokens.css — design tokens as CSS Custom Properties (TASK-006 Phase 2).
+ *
+ * The single source of design values for the SPA (UI/UX creative Decision Area 5 + Design
+ * Specifications). Neutral developer palette, system font stack, spacing/radius/shadow scales.
+ * All color contrast ratios were verified WCAG 2.1 AA in the UI/UX creative doc. Imported once in
+ * main.tsx before the app renders; components reference these vars from their CSS Modules.
+ */
+
+:root {
+  /* Backgrounds */
+  --color-bg: #f8f9fa;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f1f3f5;
+
+  /* Borders */
+  --color-border: #dee2e6;
+  --color-border-strong: #adb5bd;
+
+  /* Text */
+  --color-text-primary: #212529; /* contrast on bg: 15.2:1 */
+  --color-text-muted: #6c757d; /* contrast on --color-surface: 4.54:1 */
+  --color-text-inverse: #ffffff;
+
+  /* Interactive */
+  --color-accent: #3b6ef5; /* contrast on bg: 4.7:1 */
+  --color-accent-hover: #2b5ce0;
+  --color-focus-ring: #3b6ef5;
+
+  /* Column header tints (background) */
+  --color-col-todo-bg: #eff3ff;
+  --color-col-progress-bg: #fff4e6;
+  --color-col-done-bg: #ebfbee;
+
+  /* Column header label text (all columns) */
+  --color-col-header-text: #212529; /* contrast on all tints: >14:1 */
+
+  /* Error */
+  --color-error-bg: #fff5f5;
+  --color-error-border: #ffc9c9;
+  --color-error-text: #c92a2a; /* contrast on error-bg: 6.8:1 */
+
+  /* Typography */
+  --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  --line-height-base: 1.5;
+  --line-height-tight: 1.25;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
+
+  /* Focus */
+  --focus-ring: 0 0 0 3px rgba(59, 110, 245, 0.4);
+}

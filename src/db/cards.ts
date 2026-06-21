@@ -20,6 +20,12 @@
  */
 
 import { getPool } from './pool';
+import type { CardStatus } from '../validation/card';
+
+// Re-export so callers that work with card rows have a single import site for the status type.
+// The allowed values + validation live in src/validation/card.ts (single source of truth); the
+// DB column is a permissive varchar(20) with no CHECK (Architecture creative Q2a).
+export type { CardStatus };
 
 /** A card row as stored/returned by the database. */
 export interface Card {
@@ -28,6 +34,7 @@ export interface Card {
   readonly title: string;
   readonly description: string | null;
   readonly position: number;
+  readonly status: CardStatus;
   readonly created_at: Date;
   readonly updated_at: Date;
 }
@@ -38,6 +45,7 @@ export interface CreateCardParams {
   readonly title: string;
   readonly description: string | null;
   readonly position: number;
+  readonly status: CardStatus;
 }
 
 /** Fields accepted when updating a card (validated upstream; at least one present). */
@@ -45,17 +53,19 @@ export interface UpdateCardParams {
   readonly title?: string;
   readonly description?: string | null;
   readonly position?: number;
+  readonly status?: CardStatus;
 }
 
 /** Column list returned by every read/RETURNING clause — keeps the API row shape consistent. */
-const RETURNING_COLUMNS = 'id, board_id, title, description, position, created_at, updated_at';
+const RETURNING_COLUMNS =
+  'id, board_id, title, description, position, status, created_at, updated_at';
 
 /** Insert a card and return the created row (id and server-managed timestamps populated). */
 export async function create(params: CreateCardParams): Promise<Card> {
   const result = await getPool().query<Card>(
-    `INSERT INTO cards (board_id, title, description, position)
-     VALUES ($1, $2, $3, $4) RETURNING ${RETURNING_COLUMNS}`,
-    [params.board_id, params.title, params.description, params.position],
+    `INSERT INTO cards (board_id, title, description, position, status)
+     VALUES ($1, $2, $3, $4, $5) RETURNING ${RETURNING_COLUMNS}`,
+    [params.board_id, params.title, params.description, params.position, params.status],
   );
   const row = result.rows[0];
   if (row === undefined) {
@@ -107,6 +117,10 @@ export async function update(id: number, params: UpdateCardParams): Promise<Card
   if (params.position !== undefined) {
     values.push(params.position);
     assignments.push(`position = $${values.length}`);
+  }
+  if (params.status !== undefined) {
+    values.push(params.status);
+    assignments.push(`status = $${values.length}`);
   }
   // Always refresh the server-managed update timestamp.
   assignments.push('updated_at = NOW()');

@@ -1,0 +1,32 @@
+/* client/src/components/AppShell/AppShell.module.css — layout for the app shell (TASK-006 Phase 2). */
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: var(--space-4) var(--space-6);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.brand {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.brand:hover {
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  padding: var(--space-6);
+}

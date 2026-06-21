@@ -1,0 +1,58 @@
+/* client/src/components/Column/Column.module.css — single kanban column (TASK-006 Phase 4). */
+
+.column {
+  display: flex;
+  flex-direction: column;
+  min-width: 260px;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* Column header: label + count, with a subtle per-status tint background. */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-col-header-text);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Per-status tints (UI/UX creative Decision Area 5; contrast of header text on each verified >14:1). */
+.todo {
+  background-color: var(--color-col-todo-bg);
+}
+
+.inProgress {
+  background-color: var(--color-col-progress-bg);
+}
+
+.done {
+  background-color: var(--color-col-done-bg);
+}
+
+.count {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  list-style: none;
+}
+
+.cardListItem {
+  list-style: none;
+}

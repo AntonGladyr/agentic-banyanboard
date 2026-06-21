@@ -2,7 +2,7 @@
 
 ## Summary
 
-- **Total Features**: 5
+- **Total Features**: 6
 - **Active Version**: None
 - **Released Versions**: 0
 - **Planning Versions**: 2 (v0.1.0, next)
@@ -25,6 +25,7 @@
 - **Target Date**: TBD
 - **Description**: Backlog for future features not yet assigned to a release.
 - **Features**:
+  - FEAT-006: React frontend board UI (complete) [Level 3]
   - FEAT-005: Board model with CRUD endpoints (complete) [Level 2]
   - FEAT-004: Card model with CRUD endpoints (complete) [Level 2]
 
@@ -86,3 +87,15 @@
 - **Linked Tasks**: TASK-004 (complete — archived 2026-06-17)
 - **Branch**: feature/FEAT-005-board-model-crud
 - **Created**: 2026-06-17
+
+### FEAT-006: React frontend board UI
+
+- **Version**: next
+- **Status**: complete
+- **Priority**: high
+- **Complexity**: Level 3
+- **Description**: Add a React frontend that consumes the existing Express CRUD APIs. Includes a board list page (lists all boards), a board view page rendering three columns (To Do / In Progress / Done), and card display showing each card's title, description, and labels. Introduces the project's first frontend tier: build tooling, client-side routing, an API client against the Board and Card endpoints, and component structure for boards, columns, and cards. Display-only scope (no drag-and-drop, auth, or real-time collaboration). Requires architecture (frontend tooling/structure, API integration, dev/prod parity, observability) and UI/UX (board list, column layout, card rendering) creative phases. Depends on FEAT-004 (Card model) and FEAT-005 (Board model) for the backing APIs.
+- **Dependencies**: FEAT-005 (Board model), FEAT-004 (Card model)
+- **Linked Tasks**: TASK-006 (complete — archived 2026-06-21)
+- **Branch**: feature/FEAT-006-react-frontend-board-ui
+- **Created**: 2026-06-20

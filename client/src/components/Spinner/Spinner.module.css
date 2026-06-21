@@ -1,0 +1,48 @@
+/* client/src/components/Spinner/Spinner.module.css — loading spinner (TASK-006 Phase 3). */
+
+/*
+ * 200 ms appearance delay (UI/UX Decision Area 6): the container starts transparent and fades in
+ * only after 200 ms, so a fast (<200 ms) localhost response that replaces the loading state never
+ * flashes a spinner. The element is in the DOM immediately for assistive tech.
+ */
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-12);
+  opacity: 0;
+  animation: appear 0s linear 200ms forwards;
+}
+
+@keyframes appear {
+  to {
+    opacity: 1;
+  }
+}
+
+.ring {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Respect users who prefer reduced motion: drop the spin, keep the visible indicator. */
+@media (prefers-reduced-motion: reduce) {
+  .container {
+    opacity: 1;
+    animation: none;
+  }
+
+  .ring {
+    animation: none;
+  }
+}

@@ -1,0 +1,69 @@
+/**
+ * client/src/styles/globals.css — global resets + base styles + a11y utilities (TASK-006 Phase 2).
+ *
+ * Minimal, framework-free reset (UI/UX creative: CSS Modules + plain CSS, no Tailwind). Sets the
+ * box model, base typography from the design tokens, and the `.sr-only` screen-reader utility.
+ * The `:focus-visible` ring is applied per-component, but a sane default lives here so no
+ * interactive element is ever left without a visible keyboard focus indicator (WCAG 2.1 AA 2.4.7).
+ * Imported once in main.tsx after tokens.css.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+/* Visible keyboard focus indicator on all interactive elements (never remove without a replacement). */
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* Screen-reader-only utility: visually hidden, still announced by assistive tech. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

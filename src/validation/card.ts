@@ -15,10 +15,16 @@
  *   - title: required on create; must be a string; non-empty; ≤ 255 characters.
  *   - description: optional; when present must be a string or null (omitted → null on create).
  *   - position: optional; when present must be a non-negative integer (omitted → 0 on create).
- *   - PATCH body: must include at least one recognized field (title, description, or position).
+ *   - status: optional; when present must be one of 'todo' | 'in_progress' | 'done'
+ *     (omitted → 'todo' on create). FEAT-006 Phase 1 — see § Backend Data Reality.
+ *   - PATCH body: must include at least one recognized field (title, description, position, status).
  *   - boardId / id path params: positive integer — reuses the domain-agnostic `validateId` from
  *     `./board` (re-exported here so the cards router imports all card validation from one place).
  *   - Unrecognized extra fields are silently ignored (no 400) — kept simple for MVP.
+ *
+ * This module is the SINGLE SOURCE OF TRUTH for the allowed `status` values (`CARD_STATUSES`): the
+ * DB column is a permissive `varchar(20)` with no CHECK constraint (Architecture creative Q2a), so
+ * the validate-before-DB guard here is what enforces the domain on every write.
  */
 
 import { badRequest } from '../errors';
@@ -30,11 +36,25 @@ export { validateId } from './board';
 /** Max length of the `title` column (VARCHAR(255) in the cards table migration). */
 const TITLE_MAX_LENGTH = 255;
 
+/**
+ * Allowed values for a card's `status` (the three kanban columns: To Do / In Progress / Done).
+ * Single source of truth for the domain — the DB column is a permissive `varchar(20)` with no
+ * CHECK, so this list is what every create/update validates against (validate-before-DB).
+ */
+export const CARD_STATUSES = ['todo', 'in_progress', 'done'] as const;
+
+/** A card's status — the column it belongs to on the board view. */
+export type CardStatus = (typeof CARD_STATUSES)[number];
+
+/** Default status applied when a create body omits `status`. */
+const DEFAULT_STATUS: CardStatus = 'todo';
+
 /** Normalized, validated body for creating a card. */
 export interface CardCreateInput {
   readonly title: string;
   readonly description: string | null;
   readonly position: number;
+  readonly status: CardStatus;
 }
 
 /**
@@ -45,6 +65,7 @@ export interface CardUpdateInput {
   readonly title?: string;
   readonly description?: string | null;
   readonly position?: number;
+  readonly status?: CardStatus;
 }
 
 /**
@@ -102,9 +123,22 @@ function checkPosition(value: unknown): number {
 }
 
 /**
- * Validate a POST /cards body. `title` is required; `description` defaults to `null` and
- * `position` to `0` when omitted. Returns the normalized `{ title, description, position }`;
- * throws `badRequest` on any rule violation.
+ * Validate a present `status` value: must be one of the recognized `CARD_STATUSES`. Rejects any
+ * other string, non-strings, and the empty string. Callers guard presence (omitted → defaults to
+ * `'todo'` on create) before calling. The narrowing return type lets callers treat the result as
+ * a `CardStatus` without an unchecked cast.
+ */
+function checkStatus(value: unknown): CardStatus {
+  if (typeof value !== 'string' || !(CARD_STATUSES as readonly string[]).includes(value)) {
+    throw badRequest(`status must be one of: ${CARD_STATUSES.join(', ')}`);
+  }
+  return value as CardStatus;
+}
+
+/**
+ * Validate a POST /cards body. `title` is required; `description` defaults to `null`, `position`
+ * to `0`, and `status` to `'todo'` when omitted. Returns the normalized
+ * `{ title, description, position, status }`; throws `badRequest` on any rule violation.
  */
 export function validateCreate(body: unknown): CardCreateInput {
   const obj = asObject(body);
@@ -115,14 +149,15 @@ export function validateCreate(body: unknown): CardCreateInput {
   const title = checkTitle(obj.title);
   const description = obj.description === undefined ? null : checkDescription(obj.description);
   const position = obj.position === undefined ? 0 : checkPosition(obj.position);
+  const status = obj.status === undefined ? DEFAULT_STATUS : checkStatus(obj.status);
 
-  return { title, description, position };
+  return { title, description, position, status };
 }
 
 /**
- * Validate a PATCH /cards/:id body. At least one of `title` / `description` / `position` must be
- * present (an empty or unrecognized-only body is a 400). Returns only the provided, normalized
- * fields.
+ * Validate a PATCH /cards/:id body. At least one of `title` / `description` / `position` /
+ * `status` must be present (an empty or unrecognized-only body is a 400). Returns only the
+ * provided, normalized fields.
  *
  * Note: JSON bodies never carry `undefined` values, so `!== undefined` reliably means "key
  * present". A present `description: null` is preserved (clears the column).
@@ -133,11 +168,12 @@ export function validateUpdate(body: unknown): CardUpdateInput {
   const hasTitle = obj.title !== undefined;
   const hasDescription = obj.description !== undefined;
   const hasPosition = obj.position !== undefined;
-  if (!hasTitle && !hasDescription && !hasPosition) {
-    throw badRequest('update must include at least one of: title, description, position');
+  const hasStatus = obj.status !== undefined;
+  if (!hasTitle && !hasDescription && !hasPosition && !hasStatus) {
+    throw badRequest('update must include at least one of: title, description, position, status');
   }
 
-  const result: { title?: string; description?: string | null; position?: number } = {};
+  const result: { title?: string; description?: string | null; position?: number; status?: CardStatus } = {};
   if (hasTitle) {
     result.title = checkTitle(obj.title);
   }
@@ -146,6 +182,9 @@ export function validateUpdate(body: unknown): CardUpdateInput {
   }
   if (hasPosition) {
     result.position = checkPosition(obj.position);
+  }
+  if (hasStatus) {
+    result.status = checkStatus(obj.status);
   }
   return result;
 }

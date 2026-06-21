@@ -36,6 +36,8 @@ describe('config/env', () => {
     'OTEL_SERVICE_NAME',
     'OTEL_EXPORTER_OTLP_ENDPOINT',
     'DATABASE_URL',
+    'SERVE_CLIENT',
+    'CLIENT_DIST_PATH',
   ];
 
   beforeEach(() => {
@@ -62,6 +64,8 @@ describe('config/env', () => {
     otelServiceName: string;
     databaseUrl: string | undefined;
     otelExporterOtlpEndpoint: string | undefined;
+    serveClient: boolean;
+    clientDistPath: string;
   } {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('./env').config;
@@ -120,5 +124,59 @@ describe('config/env', () => {
     const setConfig = loadConfig();
     // Assert: passed through unchanged.
     expect(setConfig.databaseUrl).toBe('postgres://user:pass@localhost:5432/banyanboard');
+  });
+
+  // ── TASK-006 Phase 5: SPA static-serving config (SERVE_CLIENT / CLIENT_DIST_PATH) ─────────
+  // These gate the optional Express static-serve + SPA history fallback. They default to the
+  // dev/test-safe values so `npm run dev`, `npm test`, and supertest are unaffected.
+
+  it('defaults serveClient to false and clientDistPath to client/dist when unset', () => {
+    // Arrange: SERVE_CLIENT / CLIENT_DIST_PATH deleted in beforeEach.
+    // Act
+    const config = loadConfig();
+
+    // Assert: serving is OFF by default (dev/test safe) and the dist path has a documented default.
+    expect(config.serveClient).toBe(false);
+    expect(typeof config.serveClient).toBe('boolean');
+    expect(config.clientDistPath).toBe('client/dist');
+  });
+
+  it('parses SERVE_CLIENT truthy tokens to true and lets CLIENT_DIST_PATH override', () => {
+    // Arrange
+    process.env.SERVE_CLIENT = 'true';
+    process.env.CLIENT_DIST_PATH = '/srv/app/client/dist';
+
+    // Act
+    const config = loadConfig();
+
+    // Assert: coerced to a real boolean (not the string 'true') and the path passes through.
+    expect(config.serveClient).toBe(true);
+    expect(typeof config.serveClient).toBe('boolean');
+    expect(config.clientDistPath).toBe('/srv/app/client/dist');
+  });
+
+  it('treats explicit false tokens (false/0) as false', () => {
+    // Arrange
+    process.env.SERVE_CLIENT = 'false';
+
+    // Act
+    const offConfig = loadConfig();
+    // Assert
+    expect(offConfig.serveClient).toBe(false);
+
+    // Arrange: '0' is also a recognized false token, fresh module evaluation.
+    jest.resetModules();
+    process.env.SERVE_CLIENT = '0';
+
+    // Act + Assert
+    expect(loadConfig().serveClient).toBe(false);
+  });
+
+  it('fails fast when SERVE_CLIENT is not a recognized boolean token', () => {
+    // Arrange
+    process.env.SERVE_CLIENT = 'maybe';
+
+    // Act + Assert: invalid config must throw at module evaluation (fail-fast, like PORT).
+    expect(() => loadConfig()).toThrow();
   });
 });

@@ -40,6 +40,7 @@ interface FakeCard {
   title: string;
   description: string | null;
   position: number;
+  status: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -86,6 +87,7 @@ const mockQuery = jest.fn(
         title: params[1] as string,
         description: (params[2] ?? null) as string | null,
         position: params[3] as number,
+        status: params[4] as string,
         created_at: now,
         updated_at: now,
       };
@@ -135,6 +137,8 @@ const mockQuery = jest.fn(
           target.description = params[Number(idx) - 1] as string | null;
         } else if (col === 'position') {
           target.position = params[Number(idx) - 1] as number;
+        } else if (col === 'status') {
+          target.status = params[Number(idx) - 1] as string;
         }
       }
       target.updated_at = new Date();
@@ -199,6 +203,7 @@ describe('cards slice (integration, mocked pool seam)', () => {
       title: 'Implement login',
       description: null,
       position: 0,
+      status: 'todo',
       created_at: expect.any(String),
       updated_at: expect.any(String),
     });
@@ -293,6 +298,7 @@ describe('cards slice (integration, mocked pool seam)', () => {
       title: 'Specific Title',
       description: 'Specific Desc',
       position: 3,
+      status: 'todo',
       created_at: expect.any(String),
       updated_at: expect.any(String),
     });
@@ -441,6 +447,69 @@ describe('cards slice (integration, mocked pool seam)', () => {
       .send({ title: 'X', position: 'top' });
     expect(res.status).toBe(400);
     expect(store.cards).toHaveLength(0);
+  });
+
+  // ── AC-STATUS-1: status field (FEAT-006 Phase 1) ───────────────────────────────────────────
+  it('AC-STATUS-1: POST without status defaults to "todo"; GET cards carry a valid status', async () => {
+    const created = await request(app).post('/api/v1/boards/1/cards').send({ title: 'No status' });
+    expect(created.status).toBe(201);
+    expect(created.body.status).toBe('todo');
+
+    const listed = await request(app).get('/api/v1/boards/1/cards');
+    expect(listed.status).toBe(200);
+    expect(listed.body).toHaveLength(1);
+    expect(['todo', 'in_progress', 'done']).toContain(listed.body[0].status);
+    expect(listed.body[0].status).toBe('todo');
+  });
+
+  it('AC-STATUS-1: POST accepts a valid explicit status and persists it', async () => {
+    const created = await request(app)
+      .post('/api/v1/boards/1/cards')
+      .send({ title: 'In progress card', status: 'in_progress' });
+
+    expect(created.status).toBe(201);
+    expect(created.body.status).toBe('in_progress');
+
+    const readBack = await request(app).get(`/api/v1/boards/1/cards/${created.body.id}`);
+    expect(readBack.body.status).toBe('in_progress');
+  });
+
+  it('AC-STATUS-1: POST with an invalid status → 400, no row inserted', async () => {
+    const res = await request(app)
+      .post('/api/v1/boards/1/cards')
+      .send({ title: 'X', status: 'archived' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Bad Request');
+    expect(store.cards).toHaveLength(0);
+  });
+
+  it('AC-STATUS-1: PATCH status to a valid value persists and is reflected on read-back', async () => {
+    const created = await request(app).post('/api/v1/boards/1/cards').send({ title: 'Move me' });
+    expect(created.body.status).toBe('todo');
+
+    const patched = await request(app)
+      .patch(`/api/v1/boards/1/cards/${created.body.id}`)
+      .send({ status: 'done' });
+
+    expect(patched.status).toBe(200);
+    expect(patched.body.status).toBe('done');
+
+    const readBack = await request(app).get(`/api/v1/boards/1/cards/${created.body.id}`);
+    expect(readBack.body.status).toBe('done');
+  });
+
+  it('AC-STATUS-1: PATCH with an invalid status → 400 and no DB update query', async () => {
+    const created = await request(app).post('/api/v1/boards/1/cards').send({ title: 'Exists' });
+    mockQuery.mockClear();
+
+    const res = await request(app)
+      .patch(`/api/v1/boards/1/cards/${created.body.id}`)
+      .send({ status: 'archived' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Bad Request');
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   // ── AC-OBS-1: no console.* ──────────────────────────────────────────────────────────────────

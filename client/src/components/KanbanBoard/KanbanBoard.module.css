@@ -1,0 +1,17 @@
+/* client/src/components/KanbanBoard/KanbanBoard.module.css — three-column kanban (TASK-006 Phase 4). */
+
+/* Horizontal-scroll container: keeps all three columns reachable on tablet without stacking. */
+.scroller {
+  overflow-x: auto;
+  /* A little vertical padding so card box-shadows are not clipped by the scroll container. */
+  padding-bottom: var(--space-2);
+}
+
+/* Three equal-width columns; each column enforces its own min-width so the grid overflows (rather
+   than squishing) on narrow viewports, triggering the scroller above. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
