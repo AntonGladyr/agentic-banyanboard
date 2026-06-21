@@ -1,0 +1,33 @@
+/* client/src/pages/BoardViewPage.module.css — board view page layout (TASK-006 Phase 4). */
+
+/* UI/UX creative: board view full-width capped at a readable max-width (Design Specifications → Layout). */
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* Back-nav link — rendered above the heading, always present (AC-HAPPY-2 / AC-ERROR-2). */
+.backNav {
+  display: inline-block;
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-accent);
+}
+
+.backNav:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.heading {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-6);
+}
+
+.heading:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}

@@ -36,3 +36,28 @@ export function boardListErrorCopy(category: ApiErrorCategory): ErrorCopy {
       };
   }
 }
+
+/**
+ * Copy for a failed `GET /api/v1/boards/:id` (or its cards) on the board view page (AC-ERROR-2).
+ * Unlike the list, `notFound` IS meaningful here — an id in the URL can reference a board that does
+ * not exist. The board view always renders a back-nav recovery link alongside this copy.
+ */
+export function boardViewErrorCopy(category: ApiErrorCategory): ErrorCopy {
+  switch (category) {
+    case 'notFound':
+      return {
+        heading: 'Board not found',
+        message: 'This board does not exist or may have been removed.',
+      };
+    case 'network':
+      return {
+        heading: 'Could not load board',
+        message: 'The server is not reachable. Make sure it is running and try again.',
+      };
+    case 'server':
+      return {
+        heading: 'Something went wrong',
+        message: 'An error occurred while loading this board. Please try again later.',
+      };
+  }
+}

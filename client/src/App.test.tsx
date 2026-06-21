@@ -12,12 +12,23 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { App } from './App';
 
-// The `/` route now renders the live-fetching BoardListPage (Phase 3). Mock the API client so the
-// routing smoke test stays deterministic and fires no real network request — the board list always
-// renders its `Boards` heading regardless of the resolved data.
+// Both routes now render live-fetching pages (Phase 3 list, Phase 4 view). Mock the API client so the
+// routing smoke test stays deterministic and fires no real network request — each page renders its
+// heading regardless of the resolved data.
 vi.mock('./api/apiClient', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/apiClient')>();
-  return { ...actual, getBoards: vi.fn().mockResolvedValue([]) };
+  return {
+    ...actual,
+    getBoards: vi.fn().mockResolvedValue([]),
+    getBoard: vi.fn().mockResolvedValue({
+      id: 42,
+      name: 'Demo Board',
+      description: null,
+      created_at: '2026-06-20T00:00:00.000Z',
+      updated_at: '2026-06-20T00:00:00.000Z',
+    }),
+    getCards: vi.fn().mockResolvedValue([]),
+  };
 });
 
 function renderAt(path: string): void {
@@ -36,9 +47,10 @@ describe('App routing skeleton', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Boards' })).toBeInTheDocument();
   });
 
-  it('renders the board view page at "/boards/:id" with a back-to-boards link', () => {
+  it('renders the board view page at "/boards/:id" with a back-to-boards link', async () => {
     renderAt('/boards/42');
-    expect(screen.getByRole('heading', { level: 1, name: /Board 42/ })).toBeInTheDocument();
+    // The board view fetches the board on mount; the heading shows the resolved board name.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Demo Board' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Back to boards/ })).toBeInTheDocument();
   });
 

@@ -337,7 +337,7 @@ TASK-006 introduces the project's first frontend tier (a read-only React SPA) an
 - [x] Phase 1: Backend — add `status` field to the Card model (migration + validation + data-access + integration tests) → delivers AC-STATUS-1 — COMPLETE (2026-06-20)
 - [x] Phase 2: Frontend foundation — build tooling, project layout, dev proxy, client-side routing skeleton, typed API client + shared types, app shell, ErrorBoundary + errorReporter, Vitest + RTL — COMPLETE (2026-06-20). (Prod static serving deferred to Phase 5 per Architecture creative phase mapping.)
 - [x] Phase 3: Board list page (`/`) — fetch + render boards, navigable entries, empty/loading/error states → delivers AC-ENTRY-1, AC-ENTRY-2, AC-ERROR-1 (list), AC-LOADING-1 (list) — COMPLETE (2026-06-20)
-- [ ] Phase 4: Board view page (`/boards/:id`) — three status-mapped columns, card display, empty-column/loading/error-404 states, back-nav, direct-URL nav → delivers AC-HAPPY-1/2/3, AC-ERROR-2, AC-LOADING-1 (view), AC-NAV-1
+- [x] Phase 4: Board view page (`/boards/:id`) — three status-mapped columns, card display, empty-column/loading/error-404 states, back-nav, direct-URL nav → delivers AC-HAPPY-1/2/3, AC-ERROR-2, AC-LOADING-1 (view), AC-NAV-1 — COMPLETE (2026-06-21)
 - [ ] Phase 5: E2E tests + serving verification — implement entry-to-success E2E specs, verify full journeys and dev/prod serving (post-UAT per Level 3 flow)
 
 ## Creative Phases
@@ -349,20 +349,41 @@ TASK-006 introduces the project's first frontend tier (a read-only React SPA) an
 
 ## Execution State
 
-**Build Status**: COMPLETE (Phase 3 of 5)
+**Build Status**: COMPLETE (Phase 4 of 5)
 **Current Phase**: BUILD
-**Current Build**: Phase 3: Board list page (`/`) — fetch + render boards, navigable entries, loading/empty/error states (AC-ENTRY-1/2, AC-ERROR-1, AC-LOADING-1) — COMPLETE
-**Phase Number**: 3 of 5
+**Current Build**: Phase 4: Board view page (`/boards/:id`) — three status-mapped columns, card display, empty-column/loading/error-404 states, back-nav, direct-URL nav (AC-HAPPY-1/2/3, AC-ERROR-2, AC-LOADING-1, AC-NAV-1) — COMPLETE
+**Phase Number**: 4 of 5
 **Is Multi-Phase**: YES
-**Build Started**: 2026-06-20
-**Current Step**: Phase 3 complete — awaiting human review, then /banyan-build TASK-006 (Phase 4)
-**Last Completed**: BUILD Phase 3/5 (2026-06-20)
+**Build Started**: 2026-06-21
+**Current Step**: Phase 4 complete — awaiting human review, then /banyan-uat (Level 3 flow) or /banyan-build TASK-006 (Phase 5)
+**Last Completed**: BUILD Phase 4/5 (2026-06-21)
 **Can Resume**: NO
 **Branch**: feature/FEAT-006-react-frontend-board-ui (created from master 2026-06-20)
 
+### Current Build Step (Phase 4)
+**Step**: Step 11 — Git Completion (Phase 4)
+**Status**: COMPLETE — committed to feature/FEAT-006-react-frontend-board-ui (NOT pushed; push deferred to human / archive per project config).
+**Completed**: 2026-06-21
+
+### Build Completed Steps (Phase 4)
+- Step 0.5 Git Setup: COMPLETE — on feature/FEAT-006-react-frontend-board-ui (in-tree, no worktree).
+- Step 0.6 Phase Gate: COMPLETE — roadmap populated; both creative phases COMPLETE; Phases 1–3 done.
+- Step 1 Read Task Context: COMPLETE — Phase 4 (board view page) identified, Level 3.
+- Step 2 Load Context: COMPLETE — UI/UX creative (Decision Areas 3/4/5/8/9, exact copy, a11y, component inventory, Phase-4 guidelines) + apiClient/types/errorCopy + Phase 2/3 foundation components reviewed.
+- Step 3 Test Writer: COMPLETE — 17 Vitest tests written first (BoardViewPage ×11, Column ×3, CardItem ×3) + App.test.tsx mock refresh.
+- Step 4 Coding Agent (orchestrator-authored): COMPLETE — KanbanBoard, Column, CardItem components (+ CSS Modules); `boardViewErrorCopy` added to errorCopy.ts; BoardViewPage live page (parallel fetch, partition, back-nav, focus, title) + module.css.
+- Steps 5–7 Test/Build/Integration: COMPLETE — frontend `tsc -b` clean; Vitest 34/34; `vite build` PASS (59 modules). Backend `tsc`+Jest 127/127 → isolation reconfirmed. Lint N/A.
+- Step 8 Code Review: COMPLETE — independent build-code-reviewer-agent APPROVED-WITH-NITS, 0 blocking. Applied nits #1 (comment) + #3 (test selector); backLink omission intentional; nit #2 defensive branch left as-is.
+- Steps 9–10 Docs/Memory Bank: COMPLETE — progress.md (Phase 4 section + history row), tasks.md registry (Phase 4/5), this file updated. No new tech → techContext unchanged.
+
+### Phase 4 Notes / Deviations (for Phase 5 and reflection)
+- **Phase 5 serving + AC-NAV-1**: direct-URL `/boards/:id` currently works in dev via the Vite history fallback; Phase 5 must add the Express static-serve + SPA `index.html` history fallback (`SERVE_CLIENT`) to satisfy AC-NAV-1 in prod, and implement the Playwright E2E journeys.
+- **`ErrorMessage.backLink` is now unused** across both pages (list never set it; board view uses the always-present page-level back-nav instead). A future cleanup could remove the prop, or Phase 5/UAT may decide to keep it for a different surface. Left in place — harmless.
+- **`prefers-reduced-motion`** Spinner behavior (Phase 3) applies unchanged on the board view.
+
 ### Current Build Step (Phase 3)
 **Step**: Step 11 — Git Completion (Phase 3)
-**Status**: COMPLETE — committed to feature/FEAT-006-react-frontend-board-ui (NOT pushed; push deferred to human / archive per project config).
+**Status**: COMPLETE — committed `f58e610` to feature/FEAT-006-react-frontend-board-ui (NOT pushed; push deferred to human / archive per project config).
 **Completed**: 2026-06-20
 
 ### Build Completed Steps (Phase 3)
