@@ -113,4 +113,14 @@ describe('CardItem', () => {
 
     expect(onMove).toHaveBeenCalledWith(subject);
   });
+
+  // ─── Real-time highlight (TASK-007 Phase 5) ────────────────────────────────
+
+  it('applies the recently-updated highlight class only when recentlyUpdated is set (AC-REALTIME-1)', () => {
+    const { container, rerender } = render(<CardItem card={card({ title: 'Pushed card' })} />);
+    expect(container.querySelector('article')?.className).not.toMatch(/recentlyUpdated/i);
+
+    rerender(<CardItem card={card({ title: 'Pushed card' })} recentlyUpdated />);
+    expect(container.querySelector('article')?.className).toMatch(/recentlyUpdated/i);
+  });
 });

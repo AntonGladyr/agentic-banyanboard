@@ -16,8 +16,8 @@
  * Copy strings are the canonical UI/UX creative strings (Decision Areas 7 & 8).
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { BoardViewPage } from './BoardViewPage';
@@ -412,5 +412,118 @@ describe('BoardViewPage', () => {
     await screen.findByRole('alert');
     expect(screen.queryByText(/internal-detail/)).not.toBeInTheDocument();
     expect(screen.queryByText(/db\.query/)).not.toBeInTheDocument();
+  });
+});
+
+// ─── Real-time collaboration (TASK-007 Phase 5) ──────────────────────────────
+//
+// The page subscribes via `useRealtimeBoard`, which opens an `EventSource`. jsdom has none, so a
+// fake is stubbed for these tests only; remote events (originId !== this tab) are applied to the
+// board without a refresh (AC-REALTIME-1, AC-REALTIME-2). The page's own `getClientId()` differs
+// from the 'remote' origin used here, so de-dup never suppresses these.
+
+class FakeEventSource {
+  static instances: FakeEventSource[] = [];
+  readonly url: string;
+  readonly listeners = new Map<string, Set<(event: MessageEvent) => void>>();
+  closed = false;
+  constructor(url: string) {
+    this.url = url;
+    FakeEventSource.instances.push(this);
+  }
+  addEventListener(type: string, cb: (event: MessageEvent) => void): void {
+    const set = this.listeners.get(type) ?? new Set();
+    set.add(cb);
+    this.listeners.set(type, set);
+  }
+  removeEventListener(type: string, cb: (event: MessageEvent) => void): void {
+    this.listeners.get(type)?.delete(cb);
+  }
+  close(): void {
+    this.closed = true;
+  }
+  emit(type: string, payload: unknown): void {
+    const event = { data: JSON.stringify(payload) } as MessageEvent;
+    this.listeners.get(type)?.forEach((cb) => cb(event));
+  }
+}
+
+describe('BoardViewPage — real-time updates', () => {
+  beforeEach(() => {
+    FakeEventSource.instances = [];
+    vi.stubGlobal('EventSource', FakeEventSource as unknown as typeof EventSource);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('applies a remote card:created event into its column without a refresh (AC-REALTIME-2)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    renderPageAt(1);
+    await screen.findByRole('heading', { level: 1, name: 'Alpha Project' });
+
+    const source = FakeEventSource.instances.at(-1)!;
+    act(() =>
+      source.emit('card:created', {
+        type: 'card:created',
+        boardId: 1,
+        originId: 'remote',
+        emittedAt: '2026-06-21T10:00:00.000Z',
+        card: card({ id: 500, title: 'Pushed by Jordan', status: 'in_progress' }),
+      }),
+    );
+
+    const inProgress = await screen.findByRole('region', { name: 'In Progress' });
+    expect(within(inProgress).getByText('Pushed by Jordan')).toBeInTheDocument();
+    // Stub-detection: it lands ONLY in In Progress, not To Do.
+    const todo = screen.getByRole('region', { name: 'To Do' });
+    expect(within(todo).queryByText('Pushed by Jordan')).not.toBeInTheDocument();
+  });
+
+  it('applies a remote card:updated status change so the card moves columns (AC-REALTIME-1)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([card({ id: 10, title: 'Fix login bug', status: 'todo' })]);
+    renderPageAt(1);
+    await screen.findByText('Fix login bug');
+
+    const source = FakeEventSource.instances.at(-1)!;
+    act(() =>
+      source.emit('card:updated', {
+        type: 'card:updated',
+        boardId: 1,
+        originId: 'remote',
+        emittedAt: '2026-06-21T10:00:00.000Z',
+        card: card({ id: 10, title: 'Fix login bug', status: 'done' }),
+      }),
+    );
+
+    const done = await screen.findByRole('region', { name: 'Done' });
+    expect(within(done).getByText('Fix login bug')).toBeInTheDocument();
+    const todo = screen.getByRole('region', { name: 'To Do' });
+    expect(within(todo).queryByText('Fix login bug')).not.toBeInTheDocument();
+  });
+
+  it('applies a remote board:updated event to the board heading in place (AC-REALTIME-1)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    renderPageAt(1);
+    await screen.findByRole('heading', { level: 1, name: 'Alpha Project' });
+
+    const source = FakeEventSource.instances.at(-1)!;
+    act(() =>
+      source.emit('board:updated', {
+        type: 'board:updated',
+        boardId: 1,
+        originId: 'remote',
+        emittedAt: '2026-06-21T10:00:00.000Z',
+        board: { ...board, name: 'Renamed by Jordan' },
+      }),
+    );
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Renamed by Jordan' }),
+    ).toBeInTheDocument();
   });
 });

@@ -71,6 +71,8 @@ interface KanbanBoardProps {
   readonly onMoveCard?: (card: Card, targetStatus: CardStatus) => void;
   /** Opens the keyboard "Move to column" dialog for a card (WCAG SC 2.1.1). */
   readonly onRequestMove?: (card: Card) => void;
+  /** Ids of cards just changed by a REMOTE collaborator — they flash the highlight (Phase 5, Spec 7). */
+  readonly highlightedCardIds?: ReadonlySet<number>;
 }
 
 export function KanbanBoard({
@@ -81,6 +83,7 @@ export function KanbanBoard({
   onEditCard,
   onMoveCard,
   onRequestMove,
+  highlightedCardIds,
 }: KanbanBoardProps): ReactNode {
   const [activeId, setActiveId] = useState<number | null>(null);
   const sensors = useSensors(
@@ -107,6 +110,7 @@ export function KanbanBoard({
           onCreateCard={createInColumn('todo')}
           onEditCard={onEditCard}
           onRequestMove={onRequestMove}
+          highlightedCardIds={highlightedCardIds}
         />
         <Column
           label="In Progress"
@@ -116,6 +120,7 @@ export function KanbanBoard({
           onCreateCard={createInColumn('in_progress')}
           onEditCard={onEditCard}
           onRequestMove={onRequestMove}
+          highlightedCardIds={highlightedCardIds}
         />
         <Column
           label="Done"
@@ -125,6 +130,7 @@ export function KanbanBoard({
           onCreateCard={createInColumn('done')}
           onEditCard={onEditCard}
           onRequestMove={onRequestMove}
+          highlightedCardIds={highlightedCardIds}
         />
       </div>
     </div>

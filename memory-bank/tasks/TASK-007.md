@@ -522,7 +522,7 @@ Frontend write foundation → board forms → card forms → drag-and-drop → r
 - [x] Phase 2: Create/edit board UI — create-board entry point + form on `/`, edit-board affordance + form on `/boards/:id`, validation/cancel/loading/error → delivers AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-1, AC-ERROR-3 (board), AC-LOADING-1 (board), AC-NAV-1 (board) ✅ COMPLETE (2026-06-21) — Dialog primitive, BoardForm, clientId.ts, VALIDATION_COPY; 70/70 client tests
 - [x] Phase 3: Create/edit card UI — per-column add-card affordance + create form, edit-card affordance + form, validation/cancel/loading/error → delivers AC-ENTRY-2, AC-HAPPY-3, AC-HAPPY-4, AC-ERROR-2, AC-ERROR-3 (card), AC-LOADING-1 (card), AC-NAV-1 (card) ✅ COMPLETE (2026-06-21) — CardForm (showDescription toggle), inline add-card in Column footer, edit-card via reused Dialog from CardItem; 93/93 client tests
 - [x] Phase 4: Drag-and-drop status change — `@dnd-kit` drag source/drop target, optimistic move + rollback, keyboard alternative (WCAG SC 2.1.1), `status` persistence via existing PATCH → delivers AC-HAPPY-5, AC-ERROR-4 ✅ COMPLETE (2026-06-21) — @dnd-kit/core+sortable+utilities (first client runtime deps); CardItem grip handle + Move button, Column useDroppable + DraggableCard wrapper, KanbanBoard DndContext + DragOverlay + resolveCardMove, MoveCardDialog keyboard alt, BoardViewPage optimistic handleMoveCard + rollback banner; 109/109 client tests
-- [ ] Phase 5: Real-time collaboration — new backend transport (Architecture-chosen) + board-scoped broadcast wired into mutation paths + env/observability; frontend subscription hook with echo de-dup → delivers AC-REALTIME-1, AC-REALTIME-2
+- [x] Phase 5: Real-time collaboration — new backend transport (Architecture-chosen) + board-scoped broadcast wired into mutation paths + env/observability; frontend subscription hook with echo de-dup → delivers AC-REALTIME-1, AC-REALTIME-2 ✅ COMPLETE (2026-06-21) — SSE tier `src/realtime/` (broadcaster/events/eventsRouter/notify), `REALTIME_ENABLED`+`REALTIME_KEEPALIVE_MS` env, broadcast hooks on card create/update/delete + board update, frontend `useRealtimeBoard` (EventSource + own-origin echo de-dup) + `recentlyUpdated` highlight flash; backend 150/150, client 118/118
 - [ ] Phase 6: E2E + verification — extend the Playwright suite with the full interactive journeys incl. two-tab real-time, against the real Express-served build → verifies the end-to-end ACs
 
 ## Creative Phases
@@ -538,12 +538,34 @@ Frontend write foundation → board forms → card forms → drag-and-drop → r
 ## Build Execution State
 
 **Build Status**: RUNNING
-**Current Build**: Phase 4: Drag-and-drop status change (TASK-007)
+**Current Build**: Phase 5: Real-time collaboration (TASK-007)
 **Build Started**: 2026-06-21
-**Phase Number**: 4 of 6
+**Phase Number**: 5 of 6
 **Is Multi-Phase**: YES
 
-### Current Build Step (Phase 4)
+### Current Build Step (Phase 5)
+**Step**: Phase 5 COMPLETE — committed; awaiting human review before Phase 6
+**Status**: COMPLETE
+**Completed**: 2026-06-21
+
+### Completed Steps (Phase 5)
+- Step 0.1 Resumption/Rules Check: COMPLETE — new build (Phase 4 done); no agent-rules dir (skip index)
+- Step 0.5 Git Setup: COMPLETE — on feature/FEAT-007-board-interactivity-realtime-collab, clean tree, local-merge (no remote/worktree)
+- Step 0.6 Phase Gate: COMPLETE — roadmap populated, both creative phases COMPLETE (Architecture + UI/UX), Level 3
+- Step 1 Read Task Context: COMPLETE — Phase 5 = real-time collaboration (SSE transport, board-scoped broadcast, echo de-dup, highlight flash)
+- Step 2 Load Context: COMPLETE — Architecture Decisions 1/2/3/5 (SSE, full-entity board-scoped events, echo de-dup via X-Client-Id/originId, REALTIME_* env + observability) + UI/UX Spec 7 (highlight flash) authoritative
+- Step 3 Test Writer (RED): COMPLETE — 12 backend tests (broadcaster 5, eventsRouter 3, mutationBroadcast 4) + 9 frontend (useRealtimeBoard 5, CardItem +1, BoardViewPage +3)
+- Step 4 Coding Agent (GREEN): COMPLETE — `src/realtime/{events,broadcaster,notify,eventsRouter}.ts`, mounted in routes/index.ts, broadcast hooks in cards.ts/boards.ts, REALTIME_* in env.ts; frontend `useRealtimeBoard.ts`, realtime types, CardItem recentlyUpdated +CSS, highlightedCardIds threaded KanbanBoard→Column→CardItem, BoardViewPage hook wiring
+- Step 7 Integration Verify: COMPLETE — backend Jest 150/150; client Vitest 118/118; backend `tsc` + client `tsc -b`+`vite build` clean (74 modules, 232 KB / 75 KB gzip); no ESLint (strict tsc is the lint gate)
+- Step 8 Code Review: COMPLETE — independent reviewer APPROVED, 0 blocking; createApp() seam preserved, fire-and-forget off critical path (NFR1), GP5 no-leak, pino-only (GP3), board-scoping + disconnect cleanup verified, echo de-dup correct (R5), env fail-fast (GP1), Spec 7 a11y honored; 3 optional non-blocking notes
+- Step 9/10 Docs + Memory Bank: COMPLETE — techContext updated (REALTIME_* vars + `src/realtime/` tier + two-channel origin token note); progress.md + tasks.md + roadmap checkbox updated
+
+### Resumption Notes (Phase 5)
+**Can Resume**: NO
+**Resume From**: Phase 6 (next /banyan-build TASK-007 Phase6)
+**Notes**: Phase 5 done. Phase 6 = E2E + verification — extend the Playwright suite (`client/e2e/`) with the full interactive journeys against the real Express-served build (`SERVE_CLIENT=true`), INCLUDING two-tab real-time: AC-REALTIME-1 (tab A drag → tab B sees the move <2s) and AC-REALTIME-2 (tab A create → tab B sees the card <2s). Real-time tier is live and unit/integration-tested; Phase 6 proves it end-to-end over a real SSE connection behind the Express-served build (verify the Vite-proxy-less single-origin path + `text/event-stream` buffering, per Architecture Risk table). Also create-board/edit-board/create-card/edit-card/drag-persist-on-reload/cancel-form/write-failure journeys.
+
+### Prior Phases (Phase 4)
 **Step**: Phase 4 COMPLETE — committed; awaiting human review before Phase 5
 **Status**: COMPLETE
 **Completed**: 2026-06-21

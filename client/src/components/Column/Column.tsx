@@ -47,6 +47,8 @@ interface ColumnProps {
   readonly droppableStatus?: CardStatus;
   /** Opens the keyboard "Move to column" dialog for a card (WCAG SC 2.1.1). Forwarded to each card. */
   readonly onRequestMove?: (card: Card) => void;
+  /** Ids of cards just changed by a REMOTE collaborator — they flash the highlight (Phase 5, Spec 7). */
+  readonly highlightedCardIds?: ReadonlySet<number>;
 }
 
 export function Column({
@@ -57,6 +59,7 @@ export function Column({
   onEditCard,
   droppableStatus,
   onRequestMove,
+  highlightedCardIds,
 }: ColumnProps): ReactNode {
   const [isAdding, setIsAdding] = useState(false);
   const addButtonRef = useRef<HTMLButtonElement>(null);
@@ -84,9 +87,18 @@ export function Column({
         {cards.map((card) => (
           <li key={card.id} className={styles.cardListItem}>
             {droppableStatus !== undefined ? (
-              <DraggableCard card={card} onEditCard={onEditCard} onRequestMove={onRequestMove} />
+              <DraggableCard
+                card={card}
+                onEditCard={onEditCard}
+                onRequestMove={onRequestMove}
+                recentlyUpdated={highlightedCardIds?.has(card.id) ?? false}
+              />
             ) : (
-              <CardItem card={card} onEdit={onEditCard} />
+              <CardItem
+                card={card}
+                onEdit={onEditCard}
+                recentlyUpdated={highlightedCardIds?.has(card.id) ?? false}
+              />
             )}
           </li>
         ))}
@@ -157,10 +169,12 @@ function DraggableCard({
   card,
   onEditCard,
   onRequestMove,
+  recentlyUpdated,
 }: {
   card: Card;
   onEditCard?: (card: Card) => void;
   onRequestMove?: (card: Card) => void;
+  recentlyUpdated?: boolean;
 }): ReactNode {
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: card.id,
@@ -170,6 +184,7 @@ function DraggableCard({
       card={card}
       onEdit={onEditCard}
       onMove={onRequestMove}
+      recentlyUpdated={recentlyUpdated}
       drag={{ setNodeRef, handleRef: setActivatorNodeRef, attributes, listeners, isDragging }}
     />
   );

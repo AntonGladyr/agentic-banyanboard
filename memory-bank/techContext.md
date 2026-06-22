@@ -116,6 +116,8 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 | `DATABASE_URL` | PostgreSQL DSN (stub — configurable, NOT connected) | — |
 | `SERVE_CLIENT` | Enable Express static serving of the built SPA + SPA history fallback (prod single-origin; AC-NAV-1). Parsed fail-fast (`true`/`false`/`1`/`0`) | `false` |
 | `CLIENT_DIST_PATH` | Filesystem path to the built SPA assets served when `SERVE_CLIENT=true` | `client/dist` |
+| `REALTIME_ENABLED` | Master switch for the real-time SSE tier (TASK-007 Phase 5). When `false`, `GET /api/v1/boards/:boardId/events` returns 404 and mutation broadcasts no-op. Parsed fail-fast (`true`/`false`/`1`/`0`) | `true` |
+| `REALTIME_KEEPALIVE_MS` | Interval between SSE keep-alive comment frames that defeat idle-proxy timeouts. Parsed fail-fast (positive integer) | `15000` |
 
 **Frontend (`client/`)** — Vite env vars (build-time, `VITE_`-prefixed; read in `vite.config.ts`):
 
@@ -129,7 +131,15 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 
 ## Component Structure
 
-[Seeded in `systemPatterns.md` § Architecture Overview. Phase 2 added `src/observability/` (logger, tracing), `src/middleware/requestLogger.ts`, and `src/types/express.d.ts`. Phase 3 added `src/app.ts` (`createApp()` factory), `src/index.ts` (process entry + graceful shutdown), and `src/routes/` (`health.ts`, `index.ts`). Phase 4 added `src/middleware/notFound.ts` and `src/middleware/errorHandler.ts` (centralized JSON error handling). **The BanyanBoard API foundation — config, observability, app composition, health, and error handling — is now COMPLETE (all 4 phases of TASK-001).** Downstream CRUD domain routers (boards/columns/cards) will extend the `/api/v1` tree on top of this foundation.]
+[Seeded in `systemPatterns.md` § Architecture Overview. Phase 2 added `src/observability/` (logger, tracing), `src/middleware/requestLogger.ts`, and `src/types/express.d.ts`. Phase 3 added `src/app.ts` (`createApp()` factory), `src/index.ts` (process entry + graceful shutdown), and `src/routes/` (`health.ts`, `index.ts`). Phase 4 added `src/middleware/notFound.ts` and `src/middleware/errorHandler.ts` (centralized JSON error handling). **The BanyanBoard API foundation — config, observability, app composition, health, and error handling — is now COMPLETE (all 4 phases of TASK-001).** Downstream CRUD domain routers (boards/columns/cards) will extend the `/api/v1` tree on top of this foundation.
+
+**TASK-007 Phase 5 — real-time tier (`src/realtime/`)**: a new in-process Server-Sent Events tier delivering board/card mutations live (Architecture creative Decision 1 — SSE chosen over WebSocket to preserve the `createApp()` supertest seam and ride the existing `/api/v1` Vite proxy with no `ws:true`).
+- `broadcaster.ts` — HTTP-ignorant pub/sub hub (`Map<boardId, Set<Subscriber>>`); `subscribe`/`unsubscribe`/`publish`/`connectionCount` (the count accessor is the seam for a deferred `banyanboard_realtime_connections` metric).
+- `events.ts` — the board-scoped full-entity event contract (`card:created|updated|deleted`, `board:updated`); mirrored on the frontend in `client/src/api/types.ts`.
+- `eventsRouter.ts` — `GET /api/v1/boards/:boardId/events` (`text/event-stream`), mounted inside `createApp()` (`src/routes/index.ts`, after cards). Lifecycle logged via `req.log` (open/close/published/write-failed); keep-alive frames; `req.on('close')` cleanup.
+- `notify.ts` — the mutation→broadcast bridge the boards/cards routers call AFTER `res.json()` (fire-and-forget, guarded so a broadcast failure can never fail the HTTP request — NFR1).
+- **Echo de-dup origin token (two channels, by design)**: writes send the per-tab id as the `X-Client-Id` *header* → echoed into the event `originId`; the SSE GET carries it as the `?clientId=` *query param* (EventSource cannot set headers) for connection logs only. The frontend `useRealtimeBoard` drops events whose `originId` equals its own tab id so an optimistic change is never double-applied (Decision 3 / R5). The token is opaque, not auth (no auth in MVP).
+- **Frontend**: `client/src/realtime/useRealtimeBoard.ts` (native `EventSource`, auto-reconnect, de-dup) wired in `BoardViewPage`; remote changes apply full-entity into state and flash a CSS `recentlyUpdated` highlight on `CardItem` (600ms, `prefers-reduced-motion` honored — UI/UX Spec 7).]
 
 ## External Services
 
@@ -137,4 +147,4 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 
 ## Last Refreshed
 
-2026-06-21 (TASK-006 Phase 5 — added Express SPA static-serve (`SERVE_CLIENT`/`CLIENT_DIST_PATH`) + Playwright E2E)
+2026-06-21 (TASK-007 Phase 5 — added real-time SSE tier `src/realtime/` + `REALTIME_ENABLED`/`REALTIME_KEEPALIVE_MS` config + frontend `useRealtimeBoard`/highlight)

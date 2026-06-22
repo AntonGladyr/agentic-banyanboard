@@ -89,3 +89,39 @@ export interface UpdateCardInput {
   /** New sort position; omit to leave unchanged. */
   readonly position?: number;
 }
+
+// ─── Real-time event contract (TASK-007 Phase 5) ──────────────────────────────
+//
+// The frontend's view of the SSE event envelope the backend broadcasts (mirrors
+// `src/realtime/events.ts`). Each event carries the FULL updated entity so the
+// subscription hook swaps it into local state by `id`. Timestamps are ISO strings here
+// (the backend `Date`s are serialized by `res.json` / the SSE `data:` JSON).
+
+/** The set of mutations pushed to a board's subscribers. */
+export type RealtimeEventType = 'card:created' | 'card:updated' | 'card:deleted' | 'board:updated';
+
+interface RealtimeEventBase {
+  readonly type: RealtimeEventType;
+  readonly boardId: number;
+  /** Origin token of the mutating tab, echoed back so that tab can drop its own event (echo de-dup). */
+  readonly originId?: string;
+  /** Server-side emission timestamp (ISO-8601). */
+  readonly emittedAt: string;
+  /** Trace id of the originating request (diagnostic only — never surfaced to the user). */
+  readonly traceId?: string;
+}
+
+/** A card create/update/delete event carrying the full card entity. */
+export interface CardRealtimeEvent extends RealtimeEventBase {
+  readonly type: 'card:created' | 'card:updated' | 'card:deleted';
+  readonly card: Card;
+}
+
+/** A board update event carrying the full board entity. */
+export interface BoardRealtimeEvent extends RealtimeEventBase {
+  readonly type: 'board:updated';
+  readonly board: Board;
+}
+
+/** Any board-scoped real-time event (the parsed SSE `data:` payload). */
+export type RealtimeEvent = CardRealtimeEvent | BoardRealtimeEvent;

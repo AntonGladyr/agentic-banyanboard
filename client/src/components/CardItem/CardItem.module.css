@@ -103,3 +103,30 @@
   color: var(--color-text-muted);
   line-height: var(--line-height-base);
 }
+
+/*
+ * Real-time highlight (TASK-007 Phase 5, UI/UX Spec 7): a one-shot background fade from the hover
+ * surface back to the normal surface when a REMOTE collaborator's change lands this card. ~600ms,
+ * uses existing tokens, no toast. Under reduced-motion the animation is dropped but a brief static
+ * background change still provides feedback without movement.
+ */
+.recentlyUpdated {
+  animation: highlightFade 600ms ease-out forwards;
+}
+
+@keyframes highlightFade {
+  0% {
+    background-color: var(--color-surface-hover);
+  }
+  100% {
+    background-color: var(--color-surface);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recentlyUpdated {
+    animation: none;
+    background-color: var(--color-surface-hover);
+    transition: background-color 0s;
+  }
+}

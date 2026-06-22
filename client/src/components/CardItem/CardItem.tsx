@@ -46,11 +46,23 @@ interface CardItemProps {
   readonly onMove?: (card: Card) => void;
   /** `@dnd-kit` draggable wiring. Omit for the DragOverlay clone and read-only boards. */
   readonly drag?: CardDragProps;
+  /**
+   * True briefly after a REMOTE real-time update lands this card (TASK-007 Phase 5, UI/UX Spec 7):
+   * applies a one-shot background highlight that fades, so collaborators' changes are noticeable. The
+   * current user's own (optimistic) changes are de-duped upstream and never flash.
+   */
+  readonly recentlyUpdated?: boolean;
 }
 
-export function CardItem({ card, onEdit, onMove, drag }: CardItemProps): ReactNode {
+export function CardItem({ card, onEdit, onMove, drag, recentlyUpdated }: CardItemProps): ReactNode {
   const hasDescription = card.description !== null && card.description !== '';
-  const cardClassName = drag?.isDragging ? `${styles.card} ${styles.dragging}` : styles.card;
+  const cardClassName = [
+    styles.card,
+    drag?.isDragging ? styles.dragging : '',
+    recentlyUpdated ? styles.recentlyUpdated : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   return (
     <article ref={drag?.setNodeRef} className={cardClassName}>
       <div className={styles.headerRow}>

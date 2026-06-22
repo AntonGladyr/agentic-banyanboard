@@ -35,7 +35,8 @@ import {
 import type { ApiErrorCategory } from '../api/apiClient';
 import { getClientId } from '../api/clientId';
 import { boardViewErrorCopy, dragRevertErrorCopy } from '../api/errorCopy';
-import type { Board, Card, CardStatus } from '../api/types';
+import type { Board, BoardRealtimeEvent, Card, CardRealtimeEvent, CardStatus } from '../api/types';
+import { useRealtimeBoard } from '../realtime/useRealtimeBoard';
 import { BoardForm } from '../components/BoardForm/BoardForm';
 import type { BoardFormValues } from '../components/BoardForm/BoardForm';
 import { CardForm } from '../components/CardForm/CardForm';
@@ -66,6 +67,8 @@ export function BoardViewPage(): ReactNode {
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [movingCard, setMovingCard] = useState<Card | null>(null);
   const [moveError, setMoveError] = useState(false);
+  // Ids of cards just changed by a REMOTE collaborator — they briefly flash the highlight (Spec 7).
+  const [highlightedCardIds, setHighlightedCardIds] = useState<ReadonlySet<number>>(() => new Set());
 
   useEffect(() => {
     // Reset to loading whenever the id changes so navigating between boards re-fetches cleanly.
@@ -74,6 +77,7 @@ export function BoardViewPage(): ReactNode {
     setEditingCard(null);
     setMovingCard(null);
     setMoveError(false);
+    setHighlightedCardIds(new Set());
     if (id === undefined) {
       return;
     }
@@ -204,6 +208,50 @@ export function BoardViewPage(): ReactNode {
     }
   }
 
+  // ─── Real-time collaboration (TASK-007 Phase 5) ──────────────────────────────
+  // The hook drops this tab's own echo (Architecture Decision 3), so these handlers only ever apply
+  // REMOTE collaborators' changes — exactly what should flash the highlight (UI/UX Spec 7).
+
+  // Flag a card as recently-updated, then clear it after the highlight animation (~600ms) completes.
+  function highlightCard(cardId: number): void {
+    setHighlightedCardIds((prev) => new Set(prev).add(cardId));
+    window.setTimeout(() => {
+      setHighlightedCardIds((prev) => {
+        const next = new Set(prev);
+        next.delete(cardId);
+        return next;
+      });
+    }, 650);
+  }
+
+  // Apply a remote card create/update/delete by swapping the full entity into local state by id
+  // (Architecture Decision 2). A created/updated card flashes; a delete just removes it (AC-REALTIME-1/2).
+  function applyCardEvent(event: CardRealtimeEvent): void {
+    setState((prev) => {
+      if (prev.status !== 'success') {
+        return prev;
+      }
+      if (event.type === 'card:deleted') {
+        return { ...prev, cards: prev.cards.filter((c) => c.id !== event.card.id) };
+      }
+      const exists = prev.cards.some((c) => c.id === event.card.id);
+      const cards = exists
+        ? prev.cards.map((c) => (c.id === event.card.id ? event.card : c))
+        : [...prev.cards, event.card];
+      return { ...prev, cards };
+    });
+    if (event.type !== 'card:deleted') {
+      highlightCard(event.card.id);
+    }
+  }
+
+  // Apply a remote board rename in place — the heading change is self-evident, so no flash (Spec 7).
+  function applyBoardEvent(event: BoardRealtimeEvent): void {
+    setState((prev) => (prev.status === 'success' ? { ...prev, board: event.board } : prev));
+  }
+
+  useRealtimeBoard(id, getClientId(), { onCardEvent: applyCardEvent, onBoardEvent: applyBoardEvent });
+
   const board = state.status === 'success' ? state.board : null;
   const showInlineEdit = board !== null && editing;
 
@@ -251,7 +299,14 @@ export function BoardViewPage(): ReactNode {
           />
         </div>
       ) : null}
-      {renderBody(state, handleCreateCard, setEditingCard, handleMoveCard, setMovingCard)}
+      {renderBody(
+        state,
+        handleCreateCard,
+        setEditingCard,
+        handleMoveCard,
+        setMovingCard,
+        highlightedCardIds,
+      )}
       <Dialog open={editingCard !== null} title="Edit Card" onClose={() => setEditingCard(null)}>
         {editingCard !== null ? (
           <CardForm
@@ -274,6 +329,7 @@ function renderBody(
   onEditCard: (card: Card) => void,
   onMoveCard: (card: Card, targetStatus: CardStatus) => void,
   onRequestMove: (card: Card) => void,
+  highlightedCardIds: ReadonlySet<number>,
 ): ReactNode {
   if (state.status === 'loading') {
     return <Spinner />;
@@ -293,6 +349,7 @@ function renderBody(
       onEditCard={onEditCard}
       onMoveCard={onMoveCard}
       onRequestMove={onRequestMove}
+      highlightedCardIds={highlightedCardIds}
     />
   );
 }
