@@ -23,10 +23,18 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ApiError, createCard, getBoard, getCards, updateBoard, updateCard } from '../api/apiClient';
+import {
+  ApiError,
+  createCard,
+  getBoard,
+  getCards,
+  updateBoard,
+  updateCard,
+  updateCardStatus,
+} from '../api/apiClient';
 import type { ApiErrorCategory } from '../api/apiClient';
 import { getClientId } from '../api/clientId';
-import { boardViewErrorCopy } from '../api/errorCopy';
+import { boardViewErrorCopy, dragRevertErrorCopy } from '../api/errorCopy';
 import type { Board, Card, CardStatus } from '../api/types';
 import { BoardForm } from '../components/BoardForm/BoardForm';
 import type { BoardFormValues } from '../components/BoardForm/BoardForm';
@@ -34,6 +42,7 @@ import { CardForm } from '../components/CardForm/CardForm';
 import type { CardFormValues } from '../components/CardForm/CardForm';
 import { Dialog } from '../components/Dialog/Dialog';
 import { KanbanBoard } from '../components/KanbanBoard/KanbanBoard';
+import { MoveCardDialog } from '../components/MoveCardDialog/MoveCardDialog';
 import { ErrorMessage } from '../components/ErrorMessage/ErrorMessage';
 import { Spinner } from '../components/Spinner/Spinner';
 import styles from './BoardViewPage.module.css';
@@ -55,12 +64,16 @@ export function BoardViewPage(): ReactNode {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [editing, setEditing] = useState(false);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
+  const [movingCard, setMovingCard] = useState<Card | null>(null);
+  const [moveError, setMoveError] = useState(false);
 
   useEffect(() => {
     // Reset to loading whenever the id changes so navigating between boards re-fetches cleanly.
     setState({ status: 'loading' });
     setEditing(false);
     setEditingCard(null);
+    setMovingCard(null);
+    setMoveError(false);
     if (id === undefined) {
       return;
     }
@@ -143,6 +156,54 @@ export function BoardViewPage(): ReactNode {
     setEditingCard(null);
   }
 
+  // Move a card to a new status column via an OPTIMISTIC update (Architecture Decision 3): the card
+  // jumps to the target column immediately, then the PATCH is sent. On success the server entity
+  // replaces the optimistic one; on failure the card is rolled back to its original column and a safe
+  // rollback error is surfaced (AC-ERROR-4). Shared by pointer drag-drop and the keyboard MoveCardDialog.
+  async function handleMoveCard(card: Card, targetStatus: CardStatus): Promise<void> {
+    if (id === undefined || card.status === targetStatus) {
+      return;
+    }
+    const originalStatus = card.status;
+    setMoveError(false);
+    setState((prev) =>
+      prev.status === 'success'
+        ? {
+            ...prev,
+            cards: prev.cards.map((c) => (c.id === card.id ? { ...c, status: targetStatus } : c)),
+          }
+        : prev,
+    );
+    try {
+      const updated = await updateCardStatus(id, card.id, targetStatus, getClientId());
+      setState((prev) =>
+        prev.status === 'success'
+          ? { ...prev, cards: prev.cards.map((c) => (c.id === updated.id ? updated : c)) }
+          : prev,
+      );
+    } catch {
+      // Rollback to the original column and signal the failure (no internal detail surfaced — GP5).
+      setState((prev) =>
+        prev.status === 'success'
+          ? {
+              ...prev,
+              cards: prev.cards.map((c) => (c.id === card.id ? { ...c, status: originalStatus } : c)),
+            }
+          : prev,
+      );
+      setMoveError(true);
+    }
+  }
+
+  // Keyboard "Move to column" selection (MoveCardDialog): close the dialog, then run the shared move.
+  function handleMoveSelect(targetStatus: CardStatus): void {
+    const card = movingCard;
+    setMovingCard(null);
+    if (card !== null) {
+      void handleMoveCard(card, targetStatus);
+    }
+  }
+
   const board = state.status === 'success' ? state.board : null;
   const showInlineEdit = board !== null && editing;
 
@@ -181,7 +242,16 @@ export function BoardViewPage(): ReactNode {
           ) : null}
         </div>
       )}
-      {renderBody(state, handleCreateCard, setEditingCard)}
+      {/* Optimistic-move rollback banner (AC-ERROR-4): shown only after a failed move on a loaded board. */}
+      {state.status === 'success' && moveError ? (
+        <div className={styles.moveError}>
+          <ErrorMessage
+            heading={dragRevertErrorCopy().heading}
+            message={dragRevertErrorCopy().message}
+          />
+        </div>
+      ) : null}
+      {renderBody(state, handleCreateCard, setEditingCard, handleMoveCard, setMovingCard)}
       <Dialog open={editingCard !== null} title="Edit Card" onClose={() => setEditingCard(null)}>
         {editingCard !== null ? (
           <CardForm
@@ -193,6 +263,7 @@ export function BoardViewPage(): ReactNode {
           />
         ) : null}
       </Dialog>
+      <MoveCardDialog card={movingCard} onMove={handleMoveSelect} onClose={() => setMovingCard(null)} />
     </section>
   );
 }
@@ -201,6 +272,8 @@ function renderBody(
   state: LoadState,
   onCreateCard: (status: CardStatus, values: CardFormValues) => Promise<void>,
   onEditCard: (card: Card) => void,
+  onMoveCard: (card: Card, targetStatus: CardStatus) => void,
+  onRequestMove: (card: Card) => void,
 ): ReactNode {
   if (state.status === 'loading') {
     return <Spinner />;
@@ -218,6 +291,8 @@ function renderBody(
       doneCards={cardsByStatus(state.cards, 'done')}
       onCreateCard={onCreateCard}
       onEditCard={onEditCard}
+      onMoveCard={onMoveCard}
+      onRequestMove={onRequestMove}
     />
   );
 }

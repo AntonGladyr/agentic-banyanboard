@@ -44,6 +44,22 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * Drop target wrapper (UI/UX creative Spec 6). A min-height keeps an empty column a comfortable drop
+ * target, and `.dropZoneOver` rings the column with the accent colour while a card hovers it so the
+ * drop destination is unambiguous. The ring is inset so it does not shift layout.
+ */
+.dropZone {
+  min-height: var(--space-12);
+  border-radius: var(--radius-sm);
+  transition: box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.dropZoneOver {
+  background-color: var(--color-surface-hover);
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+}
+
 .cardList {
   display: flex;
   flex-direction: column;

@@ -70,4 +70,47 @@ describe('CardItem', () => {
 
     expect(onEdit).toHaveBeenCalledWith(subject);
   });
+
+  // ─── Drag-and-drop affordances (TASK-007 Phase 4) ──────────────────────────
+
+  const dragStub = {
+    setNodeRef: vi.fn(),
+    handleRef: vi.fn(),
+    attributes: {
+      role: 'button',
+      tabIndex: 0,
+      'aria-disabled': false,
+      'aria-pressed': undefined,
+      'aria-roledescription': 'draggable',
+      'aria-describedby': '',
+    },
+    listeners: undefined,
+    isDragging: false,
+  };
+
+  it('renders no drag handle by default (read-only / overlay clone)', () => {
+    render(<CardItem card={card({ title: 'Fix login bug' })} />);
+    expect(screen.queryByRole('button', { name: /reorder card/i })).not.toBeInTheDocument();
+  });
+
+  it('renders a drag handle when drag wiring is supplied (AC-HAPPY-5)', () => {
+    render(<CardItem card={card({ title: 'Fix login bug' })} drag={dragStub} />);
+    expect(screen.getByRole('button', { name: /reorder card/i })).toBeInTheDocument();
+  });
+
+  it('does not render a move affordance when no onMove handler is given', () => {
+    render(<CardItem card={card({ title: 'Fix login bug' })} />);
+    expect(screen.queryByRole('button', { name: /move card/i })).not.toBeInTheDocument();
+  });
+
+  it('invokes onMove with the card when the keyboard move affordance is activated (WCAG SC 2.1.1)', async () => {
+    const user = userEvent.setup();
+    const onMove = vi.fn();
+    const subject = card({ id: 7, title: 'Fix login bug' });
+    render(<CardItem card={subject} onMove={onMove} />);
+
+    await user.click(screen.getByRole('button', { name: /move card: fix login bug/i }));
+
+    expect(onMove).toHaveBeenCalledWith(subject);
+  });
 });

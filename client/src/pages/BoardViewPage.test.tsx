@@ -35,6 +35,7 @@ vi.mock('../api/apiClient', async (importOriginal) => {
     updateBoard: vi.fn(),
     createCard: vi.fn(),
     updateCard: vi.fn(),
+    updateCardStatus: vi.fn(),
   };
 });
 
@@ -43,6 +44,7 @@ const getCardsMock = vi.mocked(apiClient.getCards);
 const updateBoardMock = vi.mocked(apiClient.updateBoard);
 const createCardMock = vi.mocked(apiClient.createCard);
 const updateCardMock = vi.mocked(apiClient.updateCard);
+const updateCardStatusMock = vi.mocked(apiClient.updateCardStatus);
 
 /** Render the board view at `/boards/:id` so `useParams` resolves the id like the real router. */
 function renderPageAt(id: number | string): void {
@@ -343,5 +345,72 @@ describe('BoardViewPage', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(updateCardMock).not.toHaveBeenCalled();
+  });
+
+  // ─── Drag-and-drop / keyboard move (TASK-007 Phase 4) ──────────────────────
+
+  it('moves a card to a different column via the keyboard "Move" affordance and persists the status (AC-HAPPY-5, WCAG SC 2.1.1)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([card({ id: 10, title: 'Fix login bug', status: 'todo' })]);
+    updateCardStatusMock.mockResolvedValue(
+      card({ id: 10, title: 'Fix login bug', status: 'in_progress' }),
+    );
+    renderPageAt(1);
+
+    // Open the keyboard move alternative, pick In Progress, confirm.
+    await user.click(await screen.findByRole('button', { name: /move card: fix login bug/i }));
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('radio', { name: 'In Progress' }));
+    await user.click(within(dialog).getByRole('button', { name: /^move$/i }));
+
+    // The card lands in In Progress and is gone from To Do (observable outcome of AC-HAPPY-5).
+    const inProgress = await screen.findByRole('region', { name: 'In Progress' });
+    expect(within(inProgress).getByText('Fix login bug')).toBeInTheDocument();
+    const todo = screen.getByRole('region', { name: 'To Do' });
+    expect(within(todo).queryByText('Fix login bug')).not.toBeInTheDocument();
+
+    expect(updateCardStatusMock).toHaveBeenCalledWith('1', 10, 'in_progress', expect.anything());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('reverts the card to its original column and shows an error when the move fails (AC-ERROR-4)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([card({ id: 10, title: 'Fix login bug', status: 'todo' })]);
+    updateCardStatusMock.mockRejectedValue(
+      new ApiError('server', 'Request to /boards/1/cards/10 failed with status 500'),
+    );
+    renderPageAt(1);
+
+    await user.click(await screen.findByRole('button', { name: /move card: fix login bug/i }));
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('radio', { name: 'In Progress' }));
+    await user.click(within(dialog).getByRole('button', { name: /^move$/i }));
+
+    // The move failed: a safe rollback error appears and the card is back in To Do.
+    const alert = await screen.findByRole('alert');
+    expect(within(alert).getByText('Move could not be saved')).toBeInTheDocument();
+    const todo = screen.getByRole('region', { name: 'To Do' });
+    expect(within(todo).getByText('Fix login bug')).toBeInTheDocument();
+    const inProgress = screen.getByRole('region', { name: 'In Progress' });
+    expect(within(inProgress).queryByText('Fix login bug')).not.toBeInTheDocument();
+  });
+
+  it('never surfaces internal error detail when a move fails (Guiding Principle 5)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([card({ id: 10, title: 'Fix login bug', status: 'todo' })]);
+    updateCardStatusMock.mockRejectedValue(new ApiError('server', 'secret stack at db.query internal-detail'));
+    renderPageAt(1);
+
+    await user.click(await screen.findByRole('button', { name: /move card: fix login bug/i }));
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('radio', { name: 'Done' }));
+    await user.click(within(dialog).getByRole('button', { name: /^move$/i }));
+
+    await screen.findByRole('alert');
+    expect(screen.queryByText(/internal-detail/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/db\.query/)).not.toBeInTheDocument();
   });
 });

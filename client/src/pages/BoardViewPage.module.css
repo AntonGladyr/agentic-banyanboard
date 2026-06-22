@@ -69,3 +69,8 @@
   margin-bottom: var(--space-6);
   max-width: 520px;
 }
+
+/* Optimistic-move rollback banner (AC-ERROR-4): sits above the board, below the heading row. */
+.moveError {
+  margin-bottom: var(--space-4);
+}

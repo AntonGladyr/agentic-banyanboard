@@ -2,6 +2,25 @@
 
 ---
 
+## Build Phase: TASK-007 (Board interactivity & real-time) — Phase 4/6 COMPLETE
+
+**Date**: 2026-06-21
+**Status**: Phase 4 of 6 complete on branch `feature/FEAT-007-board-interactivity-realtime-collab` (local-merge, no remote) → next: human review, then `/banyan-build TASK-007 Phase5` for the real-time tier (SSE backend + `useRealtimeBoard` hook)
+
+#### Phase 4 — Drag-and-drop status change — COMPLETE
+- **New dependency** (FIRST client runtime dep beyond React/router): `@dnd-kit/core@^6.3` + `@dnd-kit/sortable@^8.0` + `@dnd-kit/utilities@^3.2` (Architecture Decision 4). 0 production vulnerabilities; the 5 audit findings are all pre-existing dev-tooling transitives. `@dnd-kit/sortable` installed now (only `sortableKeyboardCoordinates` used today) so the deferred intra-column reorder is a non-breaking future add.
+- **`client/src/components/CardItem/`**: stays presentational. New optional `drag` prop (`setNodeRef`/`handleRef`/`attributes`/`listeners`/`isDragging`) renders a grip (⠿) handle as the `@dnd-kit` activator and mutes the source card while dragging; new optional `onMove` renders a keyboard "Move" (⤢) button. Both join the hover/focus-reveal toolbar (always-visible on coarse-pointer tablets). The `@dnd-kit` hook is deliberately NOT here — see Column — so the DragOverlay clone and read-only cards register no draggable (no duplicate-id collision).
+- **`client/src/components/Column/`**: new optional `droppableStatus: CardStatus` makes the card area a `useDroppable` zone (inset accent ring on `isOver`) and wraps each card in a local `DraggableCard` (`useDraggable`, keyed by `card.id`); `onRequestMove` forwarded to each card's "Move" button. Hooks confined to this interactive subtree (`DropZone`/`DraggableCard` helpers) so read-only isolation tests never invoke them — existing Column tests unchanged.
+- **`client/src/components/KanbanBoard/KanbanBoard.tsx`**: when `onMoveCard` is supplied, wraps the grid in a `DndContext` (`PointerSensor` 8px-activation + `KeyboardSensor`, `closestCorners`) and renders a `DragOverlay` clone of the active card. Exports the pure **`resolveCardMove(activeId, overId, cards)`** — maps a drop to `{card, targetStatus}` only for a different-column drop (else `null`); this is the unit-tested seam `onDragEnd` relies on (no flaky pixel simulation — drag E2E is Phase 6).
+- **New `client/src/components/MoveCardDialog/`**: the WCAG 2.1 SC 2.1.1 keyboard alternative — a `<Dialog>`-based radio group of the three columns (current pre-selected); "Move" reports the target status to the page, which runs the SAME optimistic-move path. Renders nothing when `card` is null (mirrors the edit-card dialog).
+- **`client/src/pages/BoardViewPage.tsx`**: owns `movingCard` + `moveError` state and **`handleMoveCard(card, targetStatus)`** — the optimistic update (Architecture Decision 3): the card jumps columns immediately, `updateCardStatus(...)` (with `getClientId()` origin token) persists it, success swaps in the server entity, failure rolls back to the original column and shows the `dragRevertErrorCopy` banner (AC-ERROR-4). Shared by pointer drop (`onMoveCard`) and the keyboard dialog (`onRequestMove` → `MoveCardDialog` → `handleMoveSelect`). Same-status moves short-circuit (no PATCH).
+- **No backend changes**: consumes the already-tested `PATCH /api/v1/boards/:boardId/cards/:id` `{ status }` (TASK-006 Phase 1 + cards.test.ts:438-507). `X-Client-Id` already plumbed in the Phase-1 write wrappers; consumed for echo de-dup in Phase 5.
+- **Tests (+16)**: `resolveCardMove` 5 (different column → move / same column → null / no over → null / non-status over → null / unknown card → null), MoveCardDialog 4 (closed when null / three options + current pre-selected / Move reports status / Cancel = no move), CardItem +4 (no handle by default / handle when drag wired / no move button without handler / Move invokes onMove with card), BoardViewPage +3 (keyboard Move persists via `updateCardStatus` + card lands in new column [AC-HAPPY-5/WCAG] / failed move rolls back + shows error [AC-ERROR-4] / no internal detail on move failure [GP5]). Client Vitest **109/109** (was 93); `tsc -b` + `vite build` clean (73 modules, 230 KB / 74 KB gzip). Strict `tsc` is the lint gate.
+- **Code review**: 0 blocking — GP5-safe (rollback copy is static, never reads `err`), XSS-safe (React-escaped titles in aria-labels), full a11y (drag handle is a focusable button carrying `@dnd-kit` keyboard sensor + the explicit MoveCardDialog for SC 2.1.1; Dialog focus trap; `role="alert"` rollback banner), optimistic + rollback per Architecture Decision 3, no DragOverlay duplicate-id (hook in Column wrapper, not CardItem).
+- **ACs delivered**: AC-HAPPY-5, AC-ERROR-4 (+ WCAG 2.1 SC 2.1.1 keyboard move).
+
+---
+
 ## Build Phase: TASK-007 (Board interactivity & real-time) — Phase 3/6 COMPLETE
 
 **Date**: 2026-06-21

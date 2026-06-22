@@ -1,5 +1,5 @@
 /**
- * client/src/components/Column/Column.tsx — a single kanban column (TASK-006 Phase 4; TASK-007 Phase 3).
+ * client/src/components/Column/Column.tsx — a single kanban column (TASK-006 Phase 4; TASK-007 Phases 3-4).
  *
  * UI/UX creative Decision Area 3 (Option 3A — horizontal kanban). A column is ALWAYS rendered, never
  * conditionally omitted, so all three columns are present even when a board has no cards (AC-HAPPY-3).
@@ -9,16 +9,20 @@
  *
  * TASK-007 Phase 3 adds an inline create-card affordance (UI/UX creative Spec 4): when an
  * `onCreateCard` handler is supplied, an always-visible "Add card" footer button expands an inline
- * CardForm at the bottom of the column. The form is title-only (`showDescription={false}`) and its
- * status is pre-scoped to the column by the parent that binds `onCreateCard` (AC-HAPPY-3). On success
- * the parent appends the card and the form collapses; Cancel/Escape collapses with no write (AC-NAV-1).
- * Each Column owns its own `isAdding` state, so opening the form in one column never affects another.
- * Read-only Columns (no `onCreateCard`) render no add affordance.
+ * CardForm at the bottom of the column. Each Column owns its own `isAdding` state.
+ *
+ * TASK-007 Phase 4 makes the column a `@dnd-kit` drop target (UI/UX creative Spec 6). When a
+ * `droppableStatus` is supplied (i.e. the board is interactive), the card area becomes a `useDroppable`
+ * zone keyed by that status, and each card is wrapped in a draggable so it can be picked up by its grip
+ * handle; the `onRequestMove` handler is forwarded to each card's keyboard "Move" affordance. The hooks
+ * are confined to this interactive subtree, so a read-only Column (no `droppableStatus`) never calls
+ * them and renders exactly as it did before Phase 4.
  */
 
 import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Card } from '../../api/types';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import type { Card, CardStatus } from '../../api/types';
 import { CardForm } from '../CardForm/CardForm';
 import type { CardFormValues } from '../CardForm/CardForm';
 import { CardItem } from '../CardItem/CardItem';
@@ -36,9 +40,24 @@ interface ColumnProps {
   readonly onCreateCard?: (values: CardFormValues) => Promise<void>;
   /** Opens the edit-card modal for a card. Forwarded to each CardItem. */
   readonly onEditCard?: (card: Card) => void;
+  /**
+   * The card status this column represents. When supplied, the column is a `@dnd-kit` drop target and
+   * its cards are draggable (interactive board). Omit for a read-only column.
+   */
+  readonly droppableStatus?: CardStatus;
+  /** Opens the keyboard "Move to column" dialog for a card (WCAG SC 2.1.1). Forwarded to each card. */
+  readonly onRequestMove?: (card: Card) => void;
 }
 
-export function Column({ label, variant, cards, onCreateCard, onEditCard }: ColumnProps): ReactNode {
+export function Column({
+  label,
+  variant,
+  cards,
+  onCreateCard,
+  onEditCard,
+  droppableStatus,
+  onRequestMove,
+}: ColumnProps): ReactNode {
   const [isAdding, setIsAdding] = useState(false);
   const addButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -57,6 +76,23 @@ export function Column({ label, variant, cards, onCreateCard, onEditCard }: Colu
     addButtonRef.current?.focus();
   }
 
+  const cardsContent =
+    cards.length === 0 ? (
+      <EmptyState heading="No cards yet" />
+    ) : (
+      <ul className={styles.cardList}>
+        {cards.map((card) => (
+          <li key={card.id} className={styles.cardListItem}>
+            {droppableStatus !== undefined ? (
+              <DraggableCard card={card} onEditCard={onEditCard} onRequestMove={onRequestMove} />
+            ) : (
+              <CardItem card={card} onEdit={onEditCard} />
+            )}
+          </li>
+        ))}
+      </ul>
+    );
+
   return (
     <section className={styles.column} aria-label={label}>
       <h2 className={`${styles.header} ${styles[variant]}`}>
@@ -65,16 +101,10 @@ export function Column({ label, variant, cards, onCreateCard, onEditCard }: Colu
           {cards.length}
         </span>
       </h2>
-      {cards.length === 0 ? (
-        <EmptyState heading="No cards yet" />
+      {droppableStatus !== undefined ? (
+        <DropZone status={droppableStatus}>{cardsContent}</DropZone>
       ) : (
-        <ul className={styles.cardList}>
-          {cards.map((card) => (
-            <li key={card.id} className={styles.cardListItem}>
-              <CardItem card={card} onEdit={onEditCard} />
-            </li>
-          ))}
-        </ul>
+        cardsContent
       )}
       {onCreateCard !== undefined ? (
         <div className={styles.footer}>
@@ -100,5 +130,47 @@ export function Column({ label, variant, cards, onCreateCard, onEditCard }: Colu
         </div>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * The droppable card area, keyed by the column's status. `isOver` (true while a dragged card hovers
+ * the column) drives a highlight ring so the drop target is obvious (Spec 6). Confined to interactive
+ * columns so the hook never runs in read-only isolation tests.
+ */
+function DropZone({ status, children }: { status: CardStatus; children: ReactNode }): ReactNode {
+  const { setNodeRef, isOver } = useDroppable({ id: status });
+  return (
+    <div ref={setNodeRef} className={isOver ? `${styles.dropZone} ${styles.dropZoneOver}` : styles.dropZone}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Wraps a CardItem with `@dnd-kit` draggable wiring (Spec 6). The `<article>` is the drag node and the
+ * grip handle is the activator; `isDragging` mutes the source while the DragOverlay clone follows the
+ * pointer. Keeping the hook here (not in CardItem) means the overlay clone and read-only cards never
+ * register a draggable, avoiding duplicate-id collisions.
+ */
+function DraggableCard({
+  card,
+  onEditCard,
+  onRequestMove,
+}: {
+  card: Card;
+  onEditCard?: (card: Card) => void;
+  onRequestMove?: (card: Card) => void;
+}): ReactNode {
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners, isDragging } = useDraggable({
+    id: card.id,
+  });
+  return (
+    <CardItem
+      card={card}
+      onEdit={onEditCard}
+      onMove={onRequestMove}
+      drag={{ setNodeRef, handleRef: setActivatorNodeRef, attributes, listeners, isDragging }}
+    />
   );
 }
