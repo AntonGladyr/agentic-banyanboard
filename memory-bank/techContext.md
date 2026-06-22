@@ -48,7 +48,7 @@ build/test config — the backend `tsc` (`include: src/**/*.ts`) and Jest (`root
 - **TypeScript**: solution-style project references — `client/tsconfig.json` (pure solution file) → `tsconfig.app.json` (app: `lib` ES2022+DOM, `jsx: react-jsx`, `moduleResolution: Bundler`, `noEmit`, strict + `noUncheckedIndexedAccess`) + `tsconfig.node.json` (for `vite.config.ts`). `tsc -b` typechecks both.
 - **API client**: `client/src/api/apiClient.ts` — typed `fetch` wrappers over the **relative** base `/api/v1`; maps every failure to a safe `ApiError` category (`network|notFound|server`) carrying no raw response body/stack (GP5). Shared contract types in `client/src/api/types.ts` (Board/Card incl. `status`; timestamps as ISO strings).
 - **Client observability** (lightweight, no third-party telemetry): single structured `console.error` sink in `client/src/observability/errorReporter.ts` + global `unhandledrejection`/`error` handlers + a root `ErrorBoundary`. The systemPatterns "no `console.*`" rule targets the backend (pino sink); the browser sink is confined to `errorReporter.ts` by design.
-- **Testing**: Vitest 2 + React Testing Library + jsdom (component/unit), sharing Vite's transform pipeline; scoped to `client/` so it never collides with the backend Jest run. Playwright E2E added in Phase 5 (specs under `client/e2e/`, excluded from Vitest).
+- **Testing**: Vitest 2 + React Testing Library + jsdom (component/unit), sharing Vite's transform pipeline; scoped to `client/` so it never collides with the backend Jest run. Playwright E2E (specs under `client/e2e/`, excluded from Vitest): a hermetic mocked `chromium` project + a real-backend `realtime` project for the two-tab SSE journeys (TASK-007 Phase 6).
 - **Dev/prod parity**: the SPA always calls relative `/api/v1`. In dev, Vite `server.proxy` forwards `/api/v1` + `/health` to the Express backend (target via env `VITE_API_PROXY_TARGET`, default `http://localhost:3000`). In prod (Phase 5), Express serves `client/dist` with a SPA history fallback on the same origin/port (gated behind `SERVE_CLIENT`).
 
 ### TypeScript Configuration (`tsconfig.json`)
@@ -95,7 +95,9 @@ See `memory-bank/creative/TASK-001-express-api-architecture.md` § Observability
 | `npm test` | Run the Vitest suite once |
 | `npm run test:watch` | Vitest in watch mode |
 | `npm run e2e:install` | One-time: install the Playwright Chromium binary |
-| `npm run e2e` | Build client + backend, then run the Playwright E2E suite (`client/e2e/`) against the real Express-served build (`SERVE_CLIENT=true`, port 3100, override via `E2E_PORT`) |
+| `npm run e2e` | Build client + backend, then run the full Playwright E2E suite (`client/e2e/`) against the real Express-served build (`SERVE_CLIENT=true`). Two projects: **`chromium`** (mocked API via `page.route`, DB-free, port 3100 / `E2E_PORT`) and **`realtime`** (real backend + real SSE for the two-tab journeys, port 3101 / `E2E_RT_PORT`) |
+
+**E2E test harness (TASK-007 Phase 6)** — the `realtime` project needs a reachable PostgreSQL: its `webServer` runs `scripts/e2e-db-setup.mjs` (idempotent create-if-missing → migrate → truncate of an **isolated** `banyanboard_e2e` DB, never the dev DB) before `node dist/index.js` with `REALTIME_ENABLED=true`. Harness-only env (NOT read by `src/config/env.ts`): `E2E_DATABASE_URL` (default `postgres://banyan:banyan@localhost:5432/banyanboard_e2e`), `E2E_MAINT_DATABASE_URL` (existing DB used only for `CREATE DATABASE`), `E2E_DB_NAME` (default `banyanboard_e2e`), `E2E_PORT`, `E2E_RT_PORT`. The `chromium` project remains hermetic and DB-free.
 
 ## Configuration Variables
 
@@ -147,4 +149,4 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 
 ## Last Refreshed
 
-2026-06-21 (TASK-007 Phase 5 — added real-time SSE tier `src/realtime/` + `REALTIME_ENABLED`/`REALTIME_KEEPALIVE_MS` config + frontend `useRealtimeBoard`/highlight)
+2026-06-21 (TASK-007 Phase 6 — E2E harness: `realtime` Playwright project + real-DB `scripts/e2e-db-setup.mjs` + `E2E_*` harness env, for the two-tab SSE journeys; BUILD_COMPLETE)

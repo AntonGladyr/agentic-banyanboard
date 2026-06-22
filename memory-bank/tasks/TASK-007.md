@@ -1,7 +1,7 @@
 # TASK-007: Board interactivity and real-time collaboration
 
 **Complexity**: Level 3 (manual override; auto-evaluated Level 4 — see FEAT-007 override reason)
-**Status**: CREATIVE_COMPLETE
+**Status**: BUILD_COMPLETE
 **Roadmap**: FEAT-007
 **Branch**: feature/FEAT-007-board-interactivity-realtime-collab
 **Worktree**: N/A
@@ -523,7 +523,7 @@ Frontend write foundation → board forms → card forms → drag-and-drop → r
 - [x] Phase 3: Create/edit card UI — per-column add-card affordance + create form, edit-card affordance + form, validation/cancel/loading/error → delivers AC-ENTRY-2, AC-HAPPY-3, AC-HAPPY-4, AC-ERROR-2, AC-ERROR-3 (card), AC-LOADING-1 (card), AC-NAV-1 (card) ✅ COMPLETE (2026-06-21) — CardForm (showDescription toggle), inline add-card in Column footer, edit-card via reused Dialog from CardItem; 93/93 client tests
 - [x] Phase 4: Drag-and-drop status change — `@dnd-kit` drag source/drop target, optimistic move + rollback, keyboard alternative (WCAG SC 2.1.1), `status` persistence via existing PATCH → delivers AC-HAPPY-5, AC-ERROR-4 ✅ COMPLETE (2026-06-21) — @dnd-kit/core+sortable+utilities (first client runtime deps); CardItem grip handle + Move button, Column useDroppable + DraggableCard wrapper, KanbanBoard DndContext + DragOverlay + resolveCardMove, MoveCardDialog keyboard alt, BoardViewPage optimistic handleMoveCard + rollback banner; 109/109 client tests
 - [x] Phase 5: Real-time collaboration — new backend transport (Architecture-chosen) + board-scoped broadcast wired into mutation paths + env/observability; frontend subscription hook with echo de-dup → delivers AC-REALTIME-1, AC-REALTIME-2 ✅ COMPLETE (2026-06-21) — SSE tier `src/realtime/` (broadcaster/events/eventsRouter/notify), `REALTIME_ENABLED`+`REALTIME_KEEPALIVE_MS` env, broadcast hooks on card create/update/delete + board update, frontend `useRealtimeBoard` (EventSource + own-origin echo de-dup) + `recentlyUpdated` highlight flash; backend 150/150, client 118/118
-- [ ] Phase 6: E2E + verification — extend the Playwright suite with the full interactive journeys incl. two-tab real-time, against the real Express-served build → verifies the end-to-end ACs
+- [x] Phase 6: E2E + verification — extend the Playwright suite with the full interactive journeys incl. two-tab real-time, against the real Express-served build → verifies the end-to-end ACs ✅ COMPLETE (2026-06-21) — two Playwright projects (mocked `chromium` + real-DB `realtime`); `scripts/e2e-db-setup.mjs` (isolated `banyanboard_e2e`, idempotent); `seedWritableApi` write-aware mock + shared `pointerDragCardToColumn`; `interactive-journeys.spec.ts` (7) + `realtime.spec.ts` (2 two-tab SSE); E2E 16/16, backend 150/150, client 118/118
 
 ## Creative Phases
 
@@ -537,13 +537,34 @@ Frontend write foundation → board forms → card forms → drag-and-drop → r
 
 ## Build Execution State
 
-**Build Status**: RUNNING
-**Current Build**: Phase 5: Real-time collaboration (TASK-007)
+**Build Status**: COMPLETE
+**Current Build**: Phase 6: E2E + verification (TASK-007) — ALL 6 PHASES COMPLETE → BUILD_COMPLETE
 **Build Started**: 2026-06-21
-**Phase Number**: 5 of 6
+**Phase Number**: 6 of 6
 **Is Multi-Phase**: YES
 
-### Current Build Step (Phase 5)
+### Current Build Step (Phase 6)
+**Step**: Phase 6 COMPLETE — committed; all phases done, awaiting human review → /banyan-reflect then /banyan-archive
+**Status**: COMPLETE
+**Completed**: 2026-06-21
+
+### Completed Steps (Phase 6)
+- Step 0.1 Resumption/Rules Check: COMPLETE — new build (Phase 5 done); no agent-rules dir (skip index)
+- Step 0.5 Git Setup: COMPLETE — on feature/FEAT-007-board-interactivity-realtime-collab, clean tree, local-merge (no remote/worktree)
+- Step 0.6 Phase Gate: COMPLETE — roadmap populated, both creative phases COMPLETE, Level 3; Phase 5 done
+- Step 1 Read Task Context: COMPLETE — Phase 6 = E2E + verification (full interactive journeys + two-tab real-time over a REAL SSE connection behind the Express-served build)
+- Step 2 Load Context: COMPLETE — design: (A) hermetic single-tab journeys via a write-aware stateful page.route mock; (B) two-tab real-time (AC-REALTIME-1/2) against a REAL DB-backed backend (dedicated banyanboard_e2e DB, 2nd webServer, 2nd Playwright project) — mocking cannot broadcast across browser contexts
+- Step 3 Test Writer: COMPLETE — `scripts/e2e-db-setup.mjs` (create-if-missing→migrate→truncate, idempotent), playwright.config (chromium+realtime projects, 2 webServers), `fixtures.ts` +seedWritableApi +pointerDragCardToColumn, `interactive-journeys.spec.ts` (7 single-tab journeys), `realtime.spec.ts` (2 two-tab journeys)
+- Step 7 Integration Verify: COMPLETE — E2E 16/16 (7 read-only + 7 interactive + 2 two-tab realtime; realtime stable across repeat-each=3); backend Jest 150/150; client Vitest 118/118; `npm run e2e` canonical (rebuild both tiers) green; no ESLint (strict tsc is the lint gate)
+- Step 8 Code Review: COMPLETE — independent reviewer APPROVED, 0 blocking; cross-context SSE de-dup traced end-to-end (distinct per-context originIds, subscriber-before-mutation, 2s assertion budget), DDL identifier guard adequate, mocked project DB-free, per-test store clone (no leakage), GP5 no-leak, FEAT-006-consistent. 3 non-blocking recommendations carried as follow-ups
+- Step 9/10 Docs + Memory Bank: COMPLETE — techContext (two Playwright projects + `scripts/e2e-db-setup.mjs` + `E2E_*` harness env + Last Refreshed), progress.md (Phase 6 + BUILD_COMPLETE), tasks.md registry (BUILD_COMPLETE 6/6), roadmap checkbox; applied 1 zero-risk review note (mock insertion-order comment)
+
+### Resumption Notes (Phase 6)
+**Can Resume**: NO
+**Resume From**: Build complete — next: /banyan-reflect TASK-007 then /banyan-archive TASK-007
+**Notes**: All 6 phases COMPLETE. Phase 6 delivered two Playwright projects (mocked `chromium` + real-DB `realtime`), `scripts/e2e-db-setup.mjs` (isolated `banyanboard_e2e`), `seedWritableApi` + `pointerDragCardToColumn` in fixtures, `interactive-journeys.spec.ts` (7) + `realtime.spec.ts` (2 two-tab SSE). Carried follow-ups (non-blocking): (1) replace the fixed 700ms SSE settle in realtime.spec with a server `ready`/`connected` signal or subscriber-count poll; (2) move the realtime `webServer` `&&` chain into a Playwright `globalSetup`; (3) `banyanboard_e2e` accumulates boards across reused-server local runs (harmless — id-scoped lookups) — periodic drop or afterAll cleanup.
+
+### Prior Phase (Phase 5) — Current Build Step
 **Step**: Phase 5 COMPLETE — committed; awaiting human review before Phase 6
 **Status**: COMPLETE
 **Completed**: 2026-06-21
