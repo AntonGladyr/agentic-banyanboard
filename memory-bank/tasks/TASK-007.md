@@ -545,7 +545,7 @@ Frontend write foundation → board forms → card forms → drag-and-drop → r
 **Current Step**: Archived 2026-06-21 — archive doc created, learned rules consolidated (frontend.md promoted to medium), merged to master via local-merge, feature branch deleted.
 **Can Resume**: NO
 **Merge Status**: merged
-**Merge Commit**: (recorded post-merge below)
+**Merge Commit**: fc1729b (merge of feature/FEAT-007-board-interactivity-realtime-collab into master)
 **Worktree Cleaned**: N/A (no worktree)
 **Branch Deleted**: YES
 **Current Build**: Phase 6: E2E + verification (TASK-007) — ALL 6 PHASES COMPLETE → BUILD_COMPLETE
