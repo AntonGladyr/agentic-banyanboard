@@ -2,6 +2,25 @@
 
 ---
 
+## Build Phase: TASK-007 (Board interactivity & real-time) — Phase 3/6 COMPLETE
+
+**Date**: 2026-06-21
+**Status**: Phase 3 of 6 complete on branch `feature/FEAT-007-board-interactivity-realtime-collab` (local-merge, no remote) → next: human review, then `/banyan-build TASK-007 Phase4` for drag-and-drop (`@dnd-kit`)
+
+#### Phase 3 — Create/edit card UI — COMPLETE
+- **New `client/src/components/CardForm/`** (`CardForm.tsx` + `.module.css` + test): content-only title+description form, the card analogue of BoardForm, reused in two contexts — inline within a Column for create-card and inside the Dialog for edit-card. New `showDescription` prop (default `true`) omits the description field for the lightweight inline create form (UI/UX creative Spec 4 — title-only column footer, matching Trello/Linear). Same `idle|submitting|error` state machine: blank/whitespace title blocks submit with an inline `role="alert"` (AC-ERROR-2), valid submit calls the parent `onSubmit` with trimmed values (empty description → `null`), submit disabled while in flight (AC-LOADING-1), `onSubmit` rejection maps to `writeErrorCopy` (GP5-safe) with input preserved (AC-ERROR-3), Cancel/Escape → `onCancel` (AC-NAV-1), focuses the title field on mount. Never imports the apiClient — the page chooses `createCard` vs `updateCard`.
+- **`client/src/components/Column/`** (`Column.tsx` + `.module.css`): added an optional `onCreateCard` handler — when supplied, an always-visible "+ Add card" footer button (aria-label `Add card to {label} column`, AC-ENTRY-2) expands an inline title-only CardForm. Each Column owns its own `isAdding` state so opening one column's form never affects another; on success the parent appends the card and the form collapses + returns focus to the button; Cancel/Escape collapses with no write (AC-NAV-1). Also forwards an optional `onEditCard` to each CardItem. Read-only Columns (no handler) render no affordance — existing TASK-006 Column tests unchanged.
+- **`client/src/components/CardItem/`** (`CardItem.tsx` + `.module.css`): added an optional `onEdit` handler — when supplied, an edit (✎) button (aria-label `Edit card: {title}`) is rendered, kept in the DOM for keyboard reach but visually revealed on card `:hover`/`:focus-within` (always visible on coarse-pointer tablets); activating it invokes `onEdit(card)` so the page opens the edit-card modal (UI/UX creative Spec 5).
+- **`client/src/components/KanbanBoard/KanbanBoard.tsx`**: threads optional `onCreateCard(status, values)` and `onEditCard(card)` down to the three Columns, binding each column's status into the create handler so the inline form is pre-scoped (AC-HAPPY-3). Handlers optional → still renders read-only.
+- **`client/src/pages/BoardViewPage.tsx`**: owns `editingCard: Card | null` state; `handleCreateCard(status, values)` calls `createCard` and appends to the in-memory cards so the new card appears in the correct column immediately (AC-HAPPY-3); `handleEditCardSave` calls `updateCard` and replaces the card in place then closes the modal (AC-HAPPY-4); renders the reused `Dialog` (title "Edit Card") wrapping a pre-filled `CardForm`. Both write paths send `getClientId()` as the origin token (Phase 5 echo-de-dup) and surface a safe error keeping the surface open on failure (AC-ERROR-3).
+- **Backend payload validated against `src/validation/card.ts`**: create sends `{ title, description: null, status }` (`validateCreate` accepts a `null` description + the three statuses); edit sends `{ title, description }` (`validateUpdate` requires ≥1 field) — no Phase 6 E2E surprises. No backend changes this phase.
+- **Tests (+23)**: CardForm 12, Column +5 (add affordance only when handler given / scoped to column / expands form / forwards values on submit / cancel collapses), CardItem +3 (no affordance without handler / named affordance / invokes onEdit with card), BoardViewPage +3 (create card in a named column shows only there + correct `createCard` args / edit card updates in place + closes + correct `updateCard` args / cancel = no API). Client Vitest **93/93** (was 70); `tsc -b` + `vite build` clean. No ESLint in project — strict `tsc` is the lint gate.
+- **Code review**: 0 blocking — GP5-safe (copy keyed on category only), XSS-safe (React-escaped title in the aria-label, controlled inputs), full a11y (role=alert validation, aria-required/invalid/describedby, focus return on cancel/close, keyboard-reachable edit + add affordances, coarse-pointer reveal fallback), consistent with FEAT-006 + Phase 2 conventions (CardForm mirrors BoardForm, reuses Dialog).
+- **No new deps/config/architecture patterns** in this phase. `@dnd-kit` (Phase 4) and the realtime tier + `REALTIME_*` env vars (Phase 5) remain deferred.
+- **ACs delivered**: AC-ENTRY-2, AC-HAPPY-3, AC-HAPPY-4, AC-ERROR-2, AC-ERROR-3 (card), AC-LOADING-1 (card), AC-NAV-1 (card).
+
+---
+
 ## Build Phase: TASK-007 (Board interactivity & real-time) — Phase 2/6 COMPLETE
 
 **Date**: 2026-06-21

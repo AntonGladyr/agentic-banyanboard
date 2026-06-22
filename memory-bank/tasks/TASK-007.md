@@ -520,7 +520,7 @@ Frontend write foundation → board forms → card forms → drag-and-drop → r
 
 - [x] Phase 1: Frontend write foundation — extend `apiClient.ts` with a `sendJson` helper + write wrappers (`createBoard`/`updateBoard`/`createCard`/`updateCard`/`updateCardStatus`), request/payload types, and write/validation/rollback error copy → enables all subsequent forms (GP5-safe error mapping) ✅ COMPLETE (2026-06-21)
 - [x] Phase 2: Create/edit board UI — create-board entry point + form on `/`, edit-board affordance + form on `/boards/:id`, validation/cancel/loading/error → delivers AC-ENTRY-1, AC-HAPPY-1, AC-HAPPY-2, AC-ERROR-1, AC-ERROR-3 (board), AC-LOADING-1 (board), AC-NAV-1 (board) ✅ COMPLETE (2026-06-21) — Dialog primitive, BoardForm, clientId.ts, VALIDATION_COPY; 70/70 client tests
-- [ ] Phase 3: Create/edit card UI — per-column add-card affordance + create form, edit-card affordance + form, validation/cancel/loading/error → delivers AC-ENTRY-2, AC-HAPPY-3, AC-HAPPY-4, AC-ERROR-2, AC-ERROR-3 (card), AC-LOADING-1 (card), AC-NAV-1 (card)
+- [x] Phase 3: Create/edit card UI — per-column add-card affordance + create form, edit-card affordance + form, validation/cancel/loading/error → delivers AC-ENTRY-2, AC-HAPPY-3, AC-HAPPY-4, AC-ERROR-2, AC-ERROR-3 (card), AC-LOADING-1 (card), AC-NAV-1 (card) ✅ COMPLETE (2026-06-21) — CardForm (showDescription toggle), inline add-card in Column footer, edit-card via reused Dialog from CardItem; 93/93 client tests
 - [ ] Phase 4: Drag-and-drop status change — `@dnd-kit` drag source/drop target, optimistic move + rollback, keyboard alternative (WCAG SC 2.1.1), `status` persistence via existing PATCH → delivers AC-HAPPY-5, AC-ERROR-4
 - [ ] Phase 5: Real-time collaboration — new backend transport (Architecture-chosen) + board-scoped broadcast wired into mutation paths + env/observability; frontend subscription hook with echo de-dup → delivers AC-REALTIME-1, AC-REALTIME-2
 - [ ] Phase 6: E2E + verification — extend the Playwright suite with the full interactive journeys incl. two-tab real-time, against the real Express-served build → verifies the end-to-end ACs
@@ -538,12 +538,34 @@ Frontend write foundation → board forms → card forms → drag-and-drop → r
 ## Build Execution State
 
 **Build Status**: RUNNING
-**Current Build**: Phase 2: Create/edit board UI (TASK-007)
+**Current Build**: Phase 3: Create/edit card UI (TASK-007)
 **Build Started**: 2026-06-21
-**Phase Number**: 2 of 6
+**Phase Number**: 3 of 6
 **Is Multi-Phase**: YES
 
-### Current Build Step
+### Current Build Step (Phase 3)
+**Step**: Phase 3 COMPLETE — committed; awaiting human review before Phase 4
+**Status**: COMPLETE
+**Completed**: 2026-06-21
+
+### Completed Steps (Phase 3)
+- Step 0.1 Resumption/Rules Check: COMPLETE — new build (Phase 2 done); no agent-rules dir (skip index)
+- Step 0.5 Git Setup: COMPLETE — on feature/FEAT-007-board-interactivity-realtime-collab, clean tree, local-merge (no remote/worktree)
+- Step 0.6 Phase Gate: COMPLETE — roadmap populated, both creative phases COMPLETE (Architecture + UI/UX), Level 3
+- Step 1 Read Task Context: COMPLETE — Phase 3 = create/edit card UI (inline create-card in Column footer, modal edit-card from CardItem)
+- Step 2 Load Context: COMPLETE — Level 3 frontend phase; UI/UX creative Spec 4 (inline create) + Spec 5 (modal edit) are authoritative
+- Step 3 Test Writer (RED): COMPLETE — 23 new tests (CardForm 12, Column +5, CardItem +3, BoardViewPage +3); confirmed RED
+- Step 4 Coding Agent (GREEN): COMPLETE — CardForm + CSS; Column add-card affordance; CardItem edit affordance; KanbanBoard prop threading; BoardViewPage create/edit handlers + Edit Card Dialog
+- Step 7 Integration Verify: COMPLETE — client Vitest 93/93; `tsc -b` + `vite build` clean; no ESLint (strict tsc is the lint gate)
+- Step 8 Code Review: COMPLETE — 0 blocking; GP5-safe, XSS-safe (React-escaped aria-label), full a11y, FEAT-006/Phase-2-consistent; backend validators confirmed to accept the create/edit payloads
+- Step 9/10 Docs + Memory Bank: COMPLETE — no new deps/config/patterns; progress.md + tasks.md updated
+
+### Resumption Notes (Phase 3)
+**Can Resume**: NO
+**Resume From**: Phase 4 (next /banyan-build TASK-007 Phase4)
+**Notes**: Phase 3 done. Phase 4 = drag-and-drop status change — add `@dnd-kit/core` + `@dnd-kit/sortable` to client/package.json (FIRST new client dep — update techContext), `useDraggable` grip handle on CardItem + `useDroppable` on Column + `DragOverlay` in KanbanBoard, optimistic move + rollback (AC-ERROR-4) via `updateCardStatus` (already in apiClient), `MoveCardDialog` keyboard alternative (WCAG SC 2.1.1). The Column/CardItem/KanbanBoard handler-threading + the reusable Dialog established here are the seams Phase 4 builds on.
+
+### Phase 2 (previous) — Current Build Step
 **Step**: Phase 2 COMPLETE — committed; awaiting human review before Phase 3
 **Status**: COMPLETE
 **Completed**: 2026-06-21

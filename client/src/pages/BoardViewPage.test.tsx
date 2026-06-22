@@ -28,12 +28,21 @@ import type { Board, Card } from '../api/types';
 // Mock the apiClient but keep the real ApiError class so `instanceof` / category mapping work.
 vi.mock('../api/apiClient', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/apiClient')>();
-  return { ...actual, getBoard: vi.fn(), getCards: vi.fn(), updateBoard: vi.fn() };
+  return {
+    ...actual,
+    getBoard: vi.fn(),
+    getCards: vi.fn(),
+    updateBoard: vi.fn(),
+    createCard: vi.fn(),
+    updateCard: vi.fn(),
+  };
 });
 
 const getBoardMock = vi.mocked(apiClient.getBoard);
 const getCardsMock = vi.mocked(apiClient.getCards);
 const updateBoardMock = vi.mocked(apiClient.updateBoard);
+const createCardMock = vi.mocked(apiClient.createCard);
+const updateCardMock = vi.mocked(apiClient.updateCard);
 
 /** Render the board view at `/boards/:id` so `useParams` resolves the id like the real router. */
 function renderPageAt(id: number | string): void {
@@ -247,5 +256,92 @@ describe('BoardViewPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Alpha Project' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: /board name/i })).not.toBeInTheDocument();
     expect(updateBoardMock).not.toHaveBeenCalled();
+  });
+
+  // ─── Create card (TASK-007 Phase 3) ───────────────────────────────────────
+
+  it('creates a card in a specific column and shows it only in that column (AC-HAPPY-3)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    createCardMock.mockResolvedValue(
+      card({ id: 50, title: 'Implement websocket handler', status: 'in_progress' }),
+    );
+    renderPageAt(1);
+
+    // Open the In Progress column's add-card form, enter a title, submit.
+    await user.click(await screen.findByRole('button', { name: /add card to in progress/i }));
+    await user.type(screen.getByRole('textbox', { name: /title/i }), 'Implement websocket handler');
+    await user.click(screen.getByRole('button', { name: 'Add Card' }));
+
+    // The new card appears in the In Progress column only (stub-detection: correct status).
+    const inProgress = await screen.findByRole('region', { name: 'In Progress' });
+    expect(within(inProgress).getByText('Implement websocket handler')).toBeInTheDocument();
+    const todo = screen.getByRole('region', { name: 'To Do' });
+    expect(within(todo).queryByText('Implement websocket handler')).not.toBeInTheDocument();
+
+    expect(createCardMock).toHaveBeenCalledWith(
+      '1',
+      { title: 'Implement websocket handler', description: null, status: 'in_progress' },
+      expect.anything(),
+    );
+  });
+
+  // ─── Edit card (TASK-007 Phase 3) ──────────────────────────────────────────
+
+  it('edits a card title/description in place via the edit-card modal (AC-HAPPY-4)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([
+      card({ id: 10, title: 'Fix login bug', description: null, status: 'todo' }),
+    ]);
+    updateCardMock.mockResolvedValue(
+      card({
+        id: 10,
+        title: 'Fix login redirect bug',
+        description: 'POST /login should redirect to dashboard after success',
+        status: 'todo',
+      }),
+    );
+    renderPageAt(1);
+
+    // Open the edit-card modal from the card's edit affordance.
+    await user.click(await screen.findByRole('button', { name: /edit card: fix login bug/i }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAccessibleName(/edit card/i);
+
+    const titleInput = within(dialog).getByRole('textbox', { name: /title/i });
+    await user.clear(titleInput);
+    await user.type(titleInput, 'Fix login redirect bug');
+    await user.type(
+      within(dialog).getByRole('textbox', { name: /description/i }),
+      'POST /login should redirect to dashboard after success',
+    );
+    await user.click(within(dialog).getByRole('button', { name: /save changes/i }));
+
+    // The card title updates in place and the dialog closes.
+    const todo = await screen.findByRole('region', { name: 'To Do' });
+    expect(within(todo).getByText('Fix login redirect bug')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(updateCardMock).toHaveBeenCalledWith(
+      '1',
+      10,
+      { title: 'Fix login redirect bug', description: 'POST /login should redirect to dashboard after success' },
+      expect.anything(),
+    );
+  });
+
+  it('closes the edit-card modal on cancel without calling updateCard (AC-NAV-1)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([card({ id: 10, title: 'Fix login bug', status: 'todo' })]);
+    renderPageAt(1);
+
+    await user.click(await screen.findByRole('button', { name: /edit card: fix login bug/i }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /cancel/i }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(updateCardMock).not.toHaveBeenCalled();
   });
 });

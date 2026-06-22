@@ -11,11 +11,63 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Title + edit affordance on one row (UI/UX creative Spec 5). */
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 .title {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   line-height: var(--line-height-tight);
+}
+
+/*
+ * Edit button — kept in the DOM for keyboard reach but visually hidden until the card is hovered or
+ * contains focus, so the board stays uncluttered (Spec 5). On coarse pointers (tablet) it is always
+ * visible since hover is unavailable. `opacity`/`visibility` are toggled rather than `display` so the
+ * button remains focusable via the keyboard at all times.
+ */
+.edit {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.card:hover .edit,
+.card:focus-within .edit {
+  opacity: 1;
+}
+
+.edit:hover {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.edit:focus-visible {
+  outline: none;
+  opacity: 1;
+  box-shadow: var(--focus-ring);
+}
+
+@media (pointer: coarse) {
+  .edit {
+    opacity: 1;
+  }
 }
 
 .description {

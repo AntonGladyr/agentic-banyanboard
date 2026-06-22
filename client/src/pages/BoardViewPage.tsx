@@ -23,13 +23,16 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ApiError, getBoard, getCards, updateBoard } from '../api/apiClient';
+import { ApiError, createCard, getBoard, getCards, updateBoard, updateCard } from '../api/apiClient';
 import type { ApiErrorCategory } from '../api/apiClient';
 import { getClientId } from '../api/clientId';
 import { boardViewErrorCopy } from '../api/errorCopy';
 import type { Board, Card, CardStatus } from '../api/types';
 import { BoardForm } from '../components/BoardForm/BoardForm';
 import type { BoardFormValues } from '../components/BoardForm/BoardForm';
+import { CardForm } from '../components/CardForm/CardForm';
+import type { CardFormValues } from '../components/CardForm/CardForm';
+import { Dialog } from '../components/Dialog/Dialog';
 import { KanbanBoard } from '../components/KanbanBoard/KanbanBoard';
 import { ErrorMessage } from '../components/ErrorMessage/ErrorMessage';
 import { Spinner } from '../components/Spinner/Spinner';
@@ -51,11 +54,13 @@ export function BoardViewPage(): ReactNode {
   const editButtonRef = useRef<HTMLButtonElement>(null);
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [editing, setEditing] = useState(false);
+  const [editingCard, setEditingCard] = useState<Card | null>(null);
 
   useEffect(() => {
     // Reset to loading whenever the id changes so navigating between boards re-fetches cleanly.
     setState({ status: 'loading' });
     setEditing(false);
+    setEditingCard(null);
     if (id === undefined) {
       return;
     }
@@ -101,6 +106,43 @@ export function BoardViewPage(): ReactNode {
     editButtonRef.current?.focus();
   }
 
+  // Create a card in a column (status pre-bound by KanbanBoard), then append it so it appears
+  // immediately in the right column (AC-HAPPY-3). A rejection propagates to the inline CardForm,
+  // which renders a safe error and stays open (AC-ERROR-3).
+  async function handleCreateCard(status: CardStatus, values: CardFormValues): Promise<void> {
+    if (id === undefined) {
+      return;
+    }
+    const created = await createCard(
+      id,
+      { title: values.title, description: values.description, status },
+      getClientId(),
+    );
+    setState((prev) =>
+      prev.status === 'success' ? { ...prev, cards: [...prev.cards, created] } : prev,
+    );
+  }
+
+  // Persist an edited card title/description, then replace it in place (AC-HAPPY-4). A rejection
+  // propagates to the CardForm in the dialog, which renders a safe error and stays open (AC-ERROR-3).
+  async function handleEditCardSave(values: CardFormValues): Promise<void> {
+    if (id === undefined || editingCard === null) {
+      return;
+    }
+    const updated = await updateCard(
+      id,
+      editingCard.id,
+      { title: values.title, description: values.description },
+      getClientId(),
+    );
+    setState((prev) =>
+      prev.status === 'success'
+        ? { ...prev, cards: prev.cards.map((c) => (c.id === updated.id ? updated : c)) }
+        : prev,
+    );
+    setEditingCard(null);
+  }
+
   const board = state.status === 'success' ? state.board : null;
   const showInlineEdit = board !== null && editing;
 
@@ -139,12 +181,27 @@ export function BoardViewPage(): ReactNode {
           ) : null}
         </div>
       )}
-      {renderBody(state)}
+      {renderBody(state, handleCreateCard, setEditingCard)}
+      <Dialog open={editingCard !== null} title="Edit Card" onClose={() => setEditingCard(null)}>
+        {editingCard !== null ? (
+          <CardForm
+            formLabel="Edit card"
+            submitLabel="Save Changes"
+            initialValues={{ title: editingCard.title, description: editingCard.description }}
+            onSubmit={handleEditCardSave}
+            onCancel={() => setEditingCard(null)}
+          />
+        ) : null}
+      </Dialog>
     </section>
   );
 }
 
-function renderBody(state: LoadState): ReactNode {
+function renderBody(
+  state: LoadState,
+  onCreateCard: (status: CardStatus, values: CardFormValues) => Promise<void>,
+  onEditCard: (card: Card) => void,
+): ReactNode {
   if (state.status === 'loading') {
     return <Spinner />;
   }
@@ -159,6 +216,8 @@ function renderBody(state: LoadState): ReactNode {
       todoCards={cardsByStatus(state.cards, 'todo')}
       inProgressCards={cardsByStatus(state.cards, 'in_progress')}
       doneCards={cardsByStatus(state.cards, 'done')}
+      onCreateCard={onCreateCard}
+      onEditCard={onEditCard}
     />
   );
 }
