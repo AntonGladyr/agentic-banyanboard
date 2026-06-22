@@ -14,6 +14,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { BoardListPage } from './BoardListPage';
 import { ApiError } from '../api/apiClient';
@@ -23,10 +24,11 @@ import type { Board } from '../api/types';
 // Mock the apiClient module but keep the real ApiError class so `instanceof` / category mapping work.
 vi.mock('../api/apiClient', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/apiClient')>();
-  return { ...actual, getBoards: vi.fn() };
+  return { ...actual, getBoards: vi.fn(), createBoard: vi.fn() };
 });
 
 const getBoardsMock = vi.mocked(apiClient.getBoards);
+const createBoardMock = vi.mocked(apiClient.createBoard);
 
 function renderPage(): void {
   render(
@@ -120,5 +122,78 @@ describe('BoardListPage', () => {
     await screen.findByRole('alert');
     expect(screen.queryByText(/internal-detail/)).not.toBeInTheDocument();
     expect(screen.queryByText(/db\.query/)).not.toBeInTheDocument();
+  });
+
+  // ─── Create board (TASK-007 Phase 2) ──────────────────────────────────────
+
+  it('renders a "New Board" create action (AC-ENTRY-1)', async () => {
+    getBoardsMock.mockResolvedValue([]);
+    renderPage();
+    expect(await screen.findByRole('button', { name: /new board/i })).toBeInTheDocument();
+  });
+
+  it('opens the create-board dialog when "New Board" is activated', async () => {
+    const user = userEvent.setup();
+    getBoardsMock.mockResolvedValue([]);
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /new board/i }));
+
+    expect(screen.getByRole('dialog')).toHaveAccessibleName(/create board/i);
+    expect(screen.getByRole('textbox', { name: /board name/i })).toBeInTheDocument();
+  });
+
+  it('creates a board end-to-end: calls createBoard and shows the new board in the list (AC-HAPPY-1)', async () => {
+    const user = userEvent.setup();
+    getBoardsMock.mockResolvedValue([]);
+    createBoardMock.mockResolvedValue({
+      id: 7,
+      name: 'Sprint 42',
+      description: null,
+      created_at: '2026-06-21T00:00:00.000Z',
+      updated_at: '2026-06-21T00:00:00.000Z',
+    });
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /new board/i }));
+    await user.type(screen.getByRole('textbox', { name: /board name/i }), 'Sprint 42');
+    await user.click(screen.getByRole('button', { name: 'Create Board' }));
+
+    // The new board appears in the list, linking to its view page.
+    expect(await screen.findByRole('link', { name: /Sprint 42/ })).toHaveAttribute('href', '/boards/7');
+    expect(createBoardMock).toHaveBeenCalledWith(
+      { name: 'Sprint 42', description: null },
+      expect.anything(),
+    );
+    // The dialog closes on success.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('closes the create dialog on cancel without calling createBoard (AC-NAV-1)', async () => {
+    const user = userEvent.setup();
+    getBoardsMock.mockResolvedValue([]);
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /new board/i }));
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(createBoardMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the dialog open and shows an error when creation fails on the server (AC-ERROR-3)', async () => {
+    const user = userEvent.setup();
+    getBoardsMock.mockResolvedValue([]);
+    createBoardMock.mockRejectedValue(new ApiError('server', 'Request to /boards failed with status 500'));
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /new board/i }));
+    await user.type(screen.getByRole('textbox', { name: /board name/i }), 'Sprint 42');
+    await user.click(screen.getByRole('button', { name: 'Create Board' }));
+
+    expect(await screen.findByText("Couldn't save changes")).toBeInTheDocument();
+    // Dialog stays open with the user's input preserved so they can retry.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /board name/i })).toHaveValue('Sprint 42');
   });
 });

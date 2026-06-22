@@ -129,3 +129,26 @@ Chronological record of pattern extraction and consolidation events from task re
 - Promoted: 0 files (testing-patterns + api-design already medium; frontend evidence_count 2, tooling evidence_count 2, error-handling/typescript-config 1 — all < threshold 3)
 - Pruned: 0 excess bullets (max 5 bullets/file < max 15)
 - Reindexed: regenerated `agent-rules-index.md` (5 → 6 files; refreshed stale globs/topics/priorities for api-design, tooling, testing-patterns; added Frontend rule)
+
+---
+
+## 2026-06-21 - TASK-007 Reflection
+
+### Extracted Patterns
+- **frontend** → amended `agent-rules/_learned/frontend.md` (evidence count: 2 → 4) — two real-time consumption bullets: (1) keep `EventSource`/WebSocket handlers in a `useRef` so the stream isn't reopened per render + close on unmount; (2) de-dup the user's own mutations from a real-time feed via a per-tab `X-Client-Id` UUID echoed into the event `originId`. `realtime` topic added to frontend.md. (Stays low — evidence_count 4, but it's the frontend file's own count; promotion is per-file and frontend remains low until reviewed.)
+- **realtime** → **created** `agent-rules/_learned/realtime.md` (evidence count: 1) — new topic file: prefer SSE mounted as a `GET /api/v1/.../events` route inside `createApp()` over WebSocket for single-host server-push (supertest-injectable, rides the existing HTTP proxy with no `ws: true` change, native `EventSource` reconnect). 7th learned file (under the 10 cap).
+- **testing-patterns** → amended `agent-rules/_learned/testing-patterns.md` (evidence count: 5 → 6) — add a dedicated real-DB Playwright project alongside the hermetic project to E2E-verify cross-context server-push (SSE/WebSocket); a mocked API cannot broadcast across browser contexts. `realtime` topic added. (Already medium.)
+
+### systemPatterns.md Updates
+- None — the SSE-in-`createApp()` transport choice is captured in the new `realtime.md` learned rule and the Architecture creative doc + techContext.md `src/realtime/` tier, not in systemPatterns Guiding Principles (consistent with how the frontend tier was handled in TASK-006).
+
+---
+
+## 2026-06-21 - Consolidation (during TASK-007 archive)
+
+- Files before: 7, Files after: 7
+- Merged: 0 files (no pair has >50% topic/glob overlap — `realtime.md` shares only the `realtime` topic with `frontend.md`/`testing-patterns.md`, on disjoint glob sets `src/realtime/**`+`client/src/realtime/**` vs `client/src/**/*.ts` vs the test globs)
+- Expired: 0 bullets (oldest bullet 5 days old — all within the 90-day window)
+- Promoted: 1 file — `frontend.md` **low → medium** (evidence_count 4 ≥ promotion threshold 3; the TASK-007 reflection deferred this, the archive consolidation gate applied it)
+- Pruned: 0 excess bullets (max 6 bullets/file < max 15)
+- Reindexed: regenerated `agent-rules-index.md` (7 files; refreshed `frontend.md` priority low → medium)

@@ -16,7 +16,8 @@
  * callers can ignore them rather than render a spurious error state.
  */
 
-import type { Board, Card } from './types';
+import type { Board, Card, CreateBoardInput, CreateCardInput, UpdateBoardInput, UpdateCardInput } from './types';
+import type { CardStatus } from './types';
 
 /**
  * Relative API base — single-origin in both dev (Vite proxy) and prod (Express static serving), so
@@ -96,4 +97,116 @@ export function getBoard(id: number | string, signal?: AbortSignal): Promise<Boa
 /** GET /api/v1/boards/:boardId/cards — list a board's cards (empty array when none exist). */
 export function getCards(boardId: number | string, signal?: AbortSignal): Promise<Card[]> {
   return getJson<Card[]>(`/boards/${boardId}/cards`, signal);
+}
+
+// ─── Write helpers (TASK-007 Phase 1) ─────────────────────────────────────────
+
+/**
+ * POST/PATCH JSON to a backend path, mapping every failure to a safe {@link ApiError}. Mirrors
+ * `getJson` for write operations. The raw error response body is deliberately never read
+ * (Guiding Principle 5). Aborts rethrow the native `AbortError` unchanged.
+ *
+ * The optional `originId` is an opaque per-tab UUID used for echo-deduplication of SSE events in
+ * Phase 5 (not auth/secret — safe to send as `X-Client-Id`).
+ */
+async function sendJson<T>(
+  method: string,
+  path: string,
+  body: unknown,
+  originId?: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...(originId ? { 'X-Client-Id': originId } : {}),
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    if (isAbortError(err)) {
+      throw err; // cancellation, not a failure — caller ignores it
+    }
+    // fetch rejects (TypeError) when the server is unreachable / connection refused.
+    throw new ApiError('network', `Network request to ${path} failed`);
+  }
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new ApiError('notFound', `Resource ${path} was not found`);
+    }
+    // Status code is standard HTTP metadata; the body is never read (GP5).
+    throw new ApiError('server', `Request to ${path} failed with status ${response.status}`);
+  }
+
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new ApiError('server', `Response from ${path} was not valid JSON`);
+  }
+}
+
+/** POST /api/v1/boards — create a new board. */
+export function createBoard(
+  input: CreateBoardInput,
+  originId?: string,
+  signal?: AbortSignal,
+): Promise<Board> {
+  return sendJson<Board>('POST', '/boards', input, originId, signal);
+}
+
+/** PATCH /api/v1/boards/:id — partial update of a board. */
+export function updateBoard(
+  id: number | string,
+  input: UpdateBoardInput,
+  originId?: string,
+  signal?: AbortSignal,
+): Promise<Board> {
+  return sendJson<Board>('PATCH', `/boards/${id}`, input, originId, signal);
+}
+
+/** POST /api/v1/boards/:boardId/cards — create a new card on a board. */
+export function createCard(
+  boardId: number | string,
+  input: CreateCardInput,
+  originId?: string,
+  signal?: AbortSignal,
+): Promise<Card> {
+  return sendJson<Card>('POST', `/boards/${boardId}/cards`, input, originId, signal);
+}
+
+/** PATCH /api/v1/boards/:boardId/cards/:id — partial update of a card. */
+export function updateCard(
+  boardId: number | string,
+  cardId: number | string,
+  input: UpdateCardInput,
+  originId?: string,
+  signal?: AbortSignal,
+): Promise<Card> {
+  return sendJson<Card>('PATCH', `/boards/${boardId}/cards/${cardId}`, input, originId, signal);
+}
+
+/**
+ * PATCH /api/v1/boards/:boardId/cards/:id — update only the `status` field of a card.
+ * Convenience wrapper used by drag-and-drop column moves (Phase 5).
+ */
+export function updateCardStatus(
+  boardId: number | string,
+  cardId: number | string,
+  status: CardStatus,
+  originId?: string,
+  signal?: AbortSignal,
+): Promise<Card> {
+  return sendJson<Card>(
+    'PATCH',
+    `/boards/${boardId}/cards/${cardId}`,
+    { status },
+    originId,
+    signal,
+  );
 }

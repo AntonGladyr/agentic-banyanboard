@@ -49,6 +49,7 @@ import { validateCreate, validateUpdate, validateId } from '../validation/card';
 import { notFoundError } from '../errors';
 import { create, listByBoard, findById, update, remove } from '../db/cards';
 import { findById as findBoardById } from '../db/boards';
+import { notifyCardChange } from '../realtime/notify';
 
 // mergeParams: true exposes the parent-mount `:boardId` param to these handlers.
 const cardsRouter = Router({ mergeParams: true });
@@ -72,6 +73,8 @@ cardsRouter.post(
       const card = await create({ board_id: boardId, ...input });
       req.log.info({ cardId: card.id, boardId }, 'card created');
       res.status(201).json(card);
+      // Fire-and-forget real-time broadcast AFTER the response (off the critical path; never fails it).
+      notifyCardChange('card:created', boardId, card, req);
     } catch (err) {
       next(err);
     }
@@ -115,7 +118,7 @@ cardsRouter.patch(
   '/:id',
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      validateId(req.params.boardId ?? '');
+      const boardId = validateId(req.params.boardId ?? '');
       const id = validateId(req.params.id ?? '');
       const input = validateUpdate(req.body);
       const card = await update(id, input);
@@ -124,6 +127,8 @@ cardsRouter.patch(
       }
       req.log.info({ cardId: id }, 'card updated');
       res.status(200).json(card);
+      // Broadcast covers edit AND drag-and-drop status change (Architecture Decision 2).
+      notifyCardChange('card:updated', boardId, card, req);
     } catch (err) {
       next(err);
     }
@@ -135,14 +140,19 @@ cardsRouter.delete(
   '/:id',
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      validateId(req.params.boardId ?? '');
+      const boardId = validateId(req.params.boardId ?? '');
       const id = validateId(req.params.id ?? '');
-      const deleted = await remove(id);
-      if (!deleted) {
+      // Read the card before deleting so the real-time event can carry the full entity (Decision 2).
+      // Observable behavior is unchanged: an absent card still maps to 404 (no row to delete).
+      const card = await findById(id);
+      if (card === null) {
         throw notFoundError(`card ${id} not found`);
       }
+      await remove(id);
       req.log.info({ cardId: id }, 'card deleted');
       res.status(204).send();
+      // UI delete is out of scope, but broadcasting keeps other tabs correct (forward-compat).
+      notifyCardChange('card:deleted', boardId, card, req);
     } catch (err) {
       next(err);
     }

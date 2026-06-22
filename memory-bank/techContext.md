@@ -43,11 +43,12 @@ build/test config — the backend `tsc` (`include: src/**/*.ts`) and Jest (`root
 
 - **Build tool / dev server**: Vite 5 + `@vitejs/plugin-react`. ESM, fast HMR; production build emits static assets to `client/dist/`.
 - **UI framework**: React 18 (`react`/`react-dom` `^18.3`) + `react-router-dom` 6 (client-side routing, `BrowserRouter`). Routes: `/` → BoardListPage, `/boards/:id` → BoardViewPage.
+- **Drag-and-drop**: `@dnd-kit/core` `^6.3` + `@dnd-kit/sortable` `^8.0` + `@dnd-kit/utilities` `^3.2` (TASK-007 Phase 4 — the FIRST client runtime deps beyond React/router). Card status-change DnD only: `useDraggable` grip handle on each card (wired in the `Column` wrapper, not `CardItem`, to avoid DragOverlay duplicate-id collisions), `useDroppable` column drop zones keyed by `CardStatus`, `DragOverlay` clone in `KanbanBoard`, `PointerSensor` (8px activation) + `KeyboardSensor` (accessible). Optimistic move + rollback lives in `BoardViewPage`; the same path backs the `MoveCardDialog` keyboard alternative (WCAG 2.1 SC 2.1.1). `@dnd-kit/sortable` is installed now for the deferred intra-column reorder (only its `sortableKeyboardCoordinates` is used today). 0 production vulnerabilities.
 - **Styling**: CSS Modules (Vite built-in, no extra deps) + CSS Custom Property design tokens (`client/src/styles/tokens.css`, WCAG-AA-verified palette). Tailwind deliberately rejected (UI/UX creative).
 - **TypeScript**: solution-style project references — `client/tsconfig.json` (pure solution file) → `tsconfig.app.json` (app: `lib` ES2022+DOM, `jsx: react-jsx`, `moduleResolution: Bundler`, `noEmit`, strict + `noUncheckedIndexedAccess`) + `tsconfig.node.json` (for `vite.config.ts`). `tsc -b` typechecks both.
 - **API client**: `client/src/api/apiClient.ts` — typed `fetch` wrappers over the **relative** base `/api/v1`; maps every failure to a safe `ApiError` category (`network|notFound|server`) carrying no raw response body/stack (GP5). Shared contract types in `client/src/api/types.ts` (Board/Card incl. `status`; timestamps as ISO strings).
 - **Client observability** (lightweight, no third-party telemetry): single structured `console.error` sink in `client/src/observability/errorReporter.ts` + global `unhandledrejection`/`error` handlers + a root `ErrorBoundary`. The systemPatterns "no `console.*`" rule targets the backend (pino sink); the browser sink is confined to `errorReporter.ts` by design.
-- **Testing**: Vitest 2 + React Testing Library + jsdom (component/unit), sharing Vite's transform pipeline; scoped to `client/` so it never collides with the backend Jest run. Playwright E2E added in Phase 5 (specs under `client/e2e/`, excluded from Vitest).
+- **Testing**: Vitest 2 + React Testing Library + jsdom (component/unit), sharing Vite's transform pipeline; scoped to `client/` so it never collides with the backend Jest run. Playwright E2E (specs under `client/e2e/`, excluded from Vitest): a hermetic mocked `chromium` project + a real-backend `realtime` project for the two-tab SSE journeys (TASK-007 Phase 6).
 - **Dev/prod parity**: the SPA always calls relative `/api/v1`. In dev, Vite `server.proxy` forwards `/api/v1` + `/health` to the Express backend (target via env `VITE_API_PROXY_TARGET`, default `http://localhost:3000`). In prod (Phase 5), Express serves `client/dist` with a SPA history fallback on the same origin/port (gated behind `SERVE_CLIENT`).
 
 ### TypeScript Configuration (`tsconfig.json`)
@@ -94,7 +95,9 @@ See `memory-bank/creative/TASK-001-express-api-architecture.md` § Observability
 | `npm test` | Run the Vitest suite once |
 | `npm run test:watch` | Vitest in watch mode |
 | `npm run e2e:install` | One-time: install the Playwright Chromium binary |
-| `npm run e2e` | Build client + backend, then run the Playwright E2E suite (`client/e2e/`) against the real Express-served build (`SERVE_CLIENT=true`, port 3100, override via `E2E_PORT`) |
+| `npm run e2e` | Build client + backend, then run the full Playwright E2E suite (`client/e2e/`) against the real Express-served build (`SERVE_CLIENT=true`). Two projects: **`chromium`** (mocked API via `page.route`, DB-free, port 3100 / `E2E_PORT`) and **`realtime`** (real backend + real SSE for the two-tab journeys, port 3101 / `E2E_RT_PORT`) |
+
+**E2E test harness (TASK-007 Phase 6)** — the `realtime` project needs a reachable PostgreSQL: its `webServer` runs `scripts/e2e-db-setup.mjs` (idempotent create-if-missing → migrate → truncate of an **isolated** `banyanboard_e2e` DB, never the dev DB) before `node dist/index.js` with `REALTIME_ENABLED=true`. Harness-only env (NOT read by `src/config/env.ts`): `E2E_DATABASE_URL` (default `postgres://banyan:banyan@localhost:5432/banyanboard_e2e`), `E2E_MAINT_DATABASE_URL` (existing DB used only for `CREATE DATABASE`), `E2E_DB_NAME` (default `banyanboard_e2e`), `E2E_PORT`, `E2E_RT_PORT`. The `chromium` project remains hermetic and DB-free.
 
 ## Configuration Variables
 
@@ -115,6 +118,8 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 | `DATABASE_URL` | PostgreSQL DSN (stub — configurable, NOT connected) | — |
 | `SERVE_CLIENT` | Enable Express static serving of the built SPA + SPA history fallback (prod single-origin; AC-NAV-1). Parsed fail-fast (`true`/`false`/`1`/`0`) | `false` |
 | `CLIENT_DIST_PATH` | Filesystem path to the built SPA assets served when `SERVE_CLIENT=true` | `client/dist` |
+| `REALTIME_ENABLED` | Master switch for the real-time SSE tier (TASK-007 Phase 5). When `false`, `GET /api/v1/boards/:boardId/events` returns 404 and mutation broadcasts no-op. Parsed fail-fast (`true`/`false`/`1`/`0`) | `true` |
+| `REALTIME_KEEPALIVE_MS` | Interval between SSE keep-alive comment frames that defeat idle-proxy timeouts. Parsed fail-fast (positive integer) | `15000` |
 
 **Frontend (`client/`)** — Vite env vars (build-time, `VITE_`-prefixed; read in `vite.config.ts`):
 
@@ -128,7 +133,15 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 
 ## Component Structure
 
-[Seeded in `systemPatterns.md` § Architecture Overview. Phase 2 added `src/observability/` (logger, tracing), `src/middleware/requestLogger.ts`, and `src/types/express.d.ts`. Phase 3 added `src/app.ts` (`createApp()` factory), `src/index.ts` (process entry + graceful shutdown), and `src/routes/` (`health.ts`, `index.ts`). Phase 4 added `src/middleware/notFound.ts` and `src/middleware/errorHandler.ts` (centralized JSON error handling). **The BanyanBoard API foundation — config, observability, app composition, health, and error handling — is now COMPLETE (all 4 phases of TASK-001).** Downstream CRUD domain routers (boards/columns/cards) will extend the `/api/v1` tree on top of this foundation.]
+[Seeded in `systemPatterns.md` § Architecture Overview. Phase 2 added `src/observability/` (logger, tracing), `src/middleware/requestLogger.ts`, and `src/types/express.d.ts`. Phase 3 added `src/app.ts` (`createApp()` factory), `src/index.ts` (process entry + graceful shutdown), and `src/routes/` (`health.ts`, `index.ts`). Phase 4 added `src/middleware/notFound.ts` and `src/middleware/errorHandler.ts` (centralized JSON error handling). **The BanyanBoard API foundation — config, observability, app composition, health, and error handling — is now COMPLETE (all 4 phases of TASK-001).** Downstream CRUD domain routers (boards/columns/cards) will extend the `/api/v1` tree on top of this foundation.
+
+**TASK-007 Phase 5 — real-time tier (`src/realtime/`)**: a new in-process Server-Sent Events tier delivering board/card mutations live (Architecture creative Decision 1 — SSE chosen over WebSocket to preserve the `createApp()` supertest seam and ride the existing `/api/v1` Vite proxy with no `ws:true`).
+- `broadcaster.ts` — HTTP-ignorant pub/sub hub (`Map<boardId, Set<Subscriber>>`); `subscribe`/`unsubscribe`/`publish`/`connectionCount` (the count accessor is the seam for a deferred `banyanboard_realtime_connections` metric).
+- `events.ts` — the board-scoped full-entity event contract (`card:created|updated|deleted`, `board:updated`); mirrored on the frontend in `client/src/api/types.ts`.
+- `eventsRouter.ts` — `GET /api/v1/boards/:boardId/events` (`text/event-stream`), mounted inside `createApp()` (`src/routes/index.ts`, after cards). Lifecycle logged via `req.log` (open/close/published/write-failed); keep-alive frames; `req.on('close')` cleanup.
+- `notify.ts` — the mutation→broadcast bridge the boards/cards routers call AFTER `res.json()` (fire-and-forget, guarded so a broadcast failure can never fail the HTTP request — NFR1).
+- **Echo de-dup origin token (two channels, by design)**: writes send the per-tab id as the `X-Client-Id` *header* → echoed into the event `originId`; the SSE GET carries it as the `?clientId=` *query param* (EventSource cannot set headers) for connection logs only. The frontend `useRealtimeBoard` drops events whose `originId` equals its own tab id so an optimistic change is never double-applied (Decision 3 / R5). The token is opaque, not auth (no auth in MVP).
+- **Frontend**: `client/src/realtime/useRealtimeBoard.ts` (native `EventSource`, auto-reconnect, de-dup) wired in `BoardViewPage`; remote changes apply full-entity into state and flash a CSS `recentlyUpdated` highlight on `CardItem` (600ms, `prefers-reduced-motion` honored — UI/UX Spec 7).]
 
 ## External Services
 
@@ -136,4 +149,4 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 
 ## Last Refreshed
 
-2026-06-21 (TASK-006 Phase 5 — added Express SPA static-serve (`SERVE_CLIENT`/`CLIENT_DIST_PATH`) + Playwright E2E)
+2026-06-21 (TASK-007 Phase 6 — E2E harness: `realtime` Playwright project + real-DB `scripts/e2e-db-setup.mjs` + `E2E_*` harness env, for the two-tab SSE journeys; BUILD_COMPLETE)

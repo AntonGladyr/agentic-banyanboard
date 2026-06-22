@@ -27,6 +27,11 @@ const DEFAULTS = {
   // unaffected; only prod opts in via SERVE_CLIENT=true (TASK-006 Phase 5 / Architecture Q1c).
   serveClient: false,
   clientDistPath: 'client/dist',
+  // Real-time SSE tier (TASK-007 Phase 5 / Architecture Decision 5). On by default; the master
+  // switch lets dev/test opt out (events route → 404, broadcast hooks no-op). Keep-alive frames
+  // defeat idle-proxy timeouts on the long-lived stream.
+  realtimeEnabled: true,
+  realtimeKeepaliveMs: 15000,
 } as const;
 
 /** Shape of the validated application configuration. */
@@ -60,6 +65,13 @@ export interface AppConfig {
   readonly serveClient: boolean;
   /** Filesystem path to the built SPA assets served when {@link serveClient} is true (CLIENT_DIST_PATH). */
   readonly clientDistPath: string;
+  /**
+   * Master switch for the real-time SSE tier (REALTIME_ENABLED). When false, the events route returns
+   * 404 and mutation broadcasts are skipped (graceful no-op). `true` in dev/prod by default.
+   */
+  readonly realtimeEnabled: boolean;
+  /** Interval (ms) between SSE keep-alive comment frames that defeat idle-proxy timeouts (REALTIME_KEEPALIVE_MS). */
+  readonly realtimeKeepaliveMs: number;
 }
 
 /**
@@ -94,6 +106,29 @@ function parsePort(raw: string | undefined, fallback: number): number {
     throw new Error(
       `Invalid PORT: expected an integer in the range 1-65535, received "${raw}".`,
     );
+  }
+
+  return parsed;
+}
+
+/**
+ * Coerce a positive-integer env value (e.g. a millisecond interval), failing fast on invalid input
+ * (consistent with {@link parsePort} but without the 65535 port ceiling). Accepts only canonical
+ * positive-integer strings. Unset falls back to the provided default.
+ */
+function parsePositiveInt(raw: string | undefined, fallback: number, name: string): number {
+  if (raw === undefined) {
+    return fallback;
+  }
+
+  const trimmed = raw.trim();
+  if (!/^[0-9]+$/.test(trimmed)) {
+    throw new Error(`Invalid ${name}: expected a positive integer, received "${raw}".`);
+  }
+
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ${name}: expected a positive integer, received "${raw}".`);
   }
 
   return parsed;
@@ -142,6 +177,12 @@ function loadConfig(): AppConfig {
     databaseUrl: readEnv('DATABASE_URL'),
     serveClient: parseBool(readEnv('SERVE_CLIENT'), DEFAULTS.serveClient),
     clientDistPath: readEnv('CLIENT_DIST_PATH') ?? DEFAULTS.clientDistPath,
+    realtimeEnabled: parseBool(readEnv('REALTIME_ENABLED'), DEFAULTS.realtimeEnabled),
+    realtimeKeepaliveMs: parsePositiveInt(
+      readEnv('REALTIME_KEEPALIVE_MS'),
+      DEFAULTS.realtimeKeepaliveMs,
+      'REALTIME_KEEPALIVE_MS',
+    ),
   };
 }
 

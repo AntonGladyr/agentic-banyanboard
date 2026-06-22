@@ -16,8 +16,9 @@
  * Copy strings are the canonical UI/UX creative strings (Decision Areas 7 & 8).
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { BoardViewPage } from './BoardViewPage';
 import { ApiError } from '../api/apiClient';
@@ -27,11 +28,23 @@ import type { Board, Card } from '../api/types';
 // Mock the apiClient but keep the real ApiError class so `instanceof` / category mapping work.
 vi.mock('../api/apiClient', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/apiClient')>();
-  return { ...actual, getBoard: vi.fn(), getCards: vi.fn() };
+  return {
+    ...actual,
+    getBoard: vi.fn(),
+    getCards: vi.fn(),
+    updateBoard: vi.fn(),
+    createCard: vi.fn(),
+    updateCard: vi.fn(),
+    updateCardStatus: vi.fn(),
+  };
 });
 
 const getBoardMock = vi.mocked(apiClient.getBoard);
 const getCardsMock = vi.mocked(apiClient.getCards);
+const updateBoardMock = vi.mocked(apiClient.updateBoard);
+const createCardMock = vi.mocked(apiClient.createCard);
+const updateCardMock = vi.mocked(apiClient.updateCard);
+const updateCardStatusMock = vi.mocked(apiClient.updateCardStatus);
 
 /** Render the board view at `/boards/:id` so `useParams` resolves the id like the real router. */
 function renderPageAt(id: number | string): void {
@@ -187,5 +200,330 @@ describe('BoardViewPage', () => {
     await screen.findByRole('alert');
     expect(screen.queryByText(/internal-detail/)).not.toBeInTheDocument();
     expect(screen.queryByText(/db\.query/)).not.toBeInTheDocument();
+  });
+
+  // ─── Edit board (TASK-007 Phase 2) ────────────────────────────────────────
+
+  it('renders an edit affordance for the board name on success (AC-HAPPY-2)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    renderPageAt(1);
+
+    expect(await screen.findByRole('button', { name: /edit board name/i })).toBeInTheDocument();
+  });
+
+  it('enters inline edit mode with the current name pre-filled (AC-HAPPY-2)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    renderPageAt(1);
+
+    await user.click(await screen.findByRole('button', { name: /edit board name/i }));
+
+    expect(screen.getByRole('textbox', { name: /board name/i })).toHaveValue('Alpha Project');
+  });
+
+  it('saves an edited board name and updates the heading in place (AC-HAPPY-2)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    updateBoardMock.mockResolvedValue({ ...board, name: 'Alpha Project v2' });
+    renderPageAt(1);
+
+    await user.click(await screen.findByRole('button', { name: /edit board name/i }));
+    const input = screen.getByRole('textbox', { name: /board name/i });
+    await user.clear(input);
+    await user.type(input, 'Alpha Project v2');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Alpha Project v2' })).toBeInTheDocument();
+    expect(updateBoardMock).toHaveBeenCalledWith(
+      '1',
+      { name: 'Alpha Project v2', description: 'Sprint planning and engineering tasks' },
+      expect.anything(),
+    );
+    // The browser tab title reflects the new name.
+    expect(document.title).toBe('BanyanBoard — Alpha Project v2');
+  });
+
+  it('cancels inline edit without calling updateBoard and restores the heading (AC-NAV-1)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    renderPageAt(1);
+
+    await user.click(await screen.findByRole('button', { name: /edit board name/i }));
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Alpha Project' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /board name/i })).not.toBeInTheDocument();
+    expect(updateBoardMock).not.toHaveBeenCalled();
+  });
+
+  // ─── Create card (TASK-007 Phase 3) ───────────────────────────────────────
+
+  it('creates a card in a specific column and shows it only in that column (AC-HAPPY-3)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    createCardMock.mockResolvedValue(
+      card({ id: 50, title: 'Implement websocket handler', status: 'in_progress' }),
+    );
+    renderPageAt(1);
+
+    // Open the In Progress column's add-card form, enter a title, submit.
+    await user.click(await screen.findByRole('button', { name: /add card to in progress/i }));
+    await user.type(screen.getByRole('textbox', { name: /title/i }), 'Implement websocket handler');
+    await user.click(screen.getByRole('button', { name: 'Add Card' }));
+
+    // The new card appears in the In Progress column only (stub-detection: correct status).
+    const inProgress = await screen.findByRole('region', { name: 'In Progress' });
+    expect(within(inProgress).getByText('Implement websocket handler')).toBeInTheDocument();
+    const todo = screen.getByRole('region', { name: 'To Do' });
+    expect(within(todo).queryByText('Implement websocket handler')).not.toBeInTheDocument();
+
+    expect(createCardMock).toHaveBeenCalledWith(
+      '1',
+      { title: 'Implement websocket handler', description: null, status: 'in_progress' },
+      expect.anything(),
+    );
+  });
+
+  // ─── Edit card (TASK-007 Phase 3) ──────────────────────────────────────────
+
+  it('edits a card title/description in place via the edit-card modal (AC-HAPPY-4)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([
+      card({ id: 10, title: 'Fix login bug', description: null, status: 'todo' }),
+    ]);
+    updateCardMock.mockResolvedValue(
+      card({
+        id: 10,
+        title: 'Fix login redirect bug',
+        description: 'POST /login should redirect to dashboard after success',
+        status: 'todo',
+      }),
+    );
+    renderPageAt(1);
+
+    // Open the edit-card modal from the card's edit affordance.
+    await user.click(await screen.findByRole('button', { name: /edit card: fix login bug/i }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAccessibleName(/edit card/i);
+
+    const titleInput = within(dialog).getByRole('textbox', { name: /title/i });
+    await user.clear(titleInput);
+    await user.type(titleInput, 'Fix login redirect bug');
+    await user.type(
+      within(dialog).getByRole('textbox', { name: /description/i }),
+      'POST /login should redirect to dashboard after success',
+    );
+    await user.click(within(dialog).getByRole('button', { name: /save changes/i }));
+
+    // The card title updates in place and the dialog closes.
+    const todo = await screen.findByRole('region', { name: 'To Do' });
+    expect(within(todo).getByText('Fix login redirect bug')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(updateCardMock).toHaveBeenCalledWith(
+      '1',
+      10,
+      { title: 'Fix login redirect bug', description: 'POST /login should redirect to dashboard after success' },
+      expect.anything(),
+    );
+  });
+
+  it('closes the edit-card modal on cancel without calling updateCard (AC-NAV-1)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([card({ id: 10, title: 'Fix login bug', status: 'todo' })]);
+    renderPageAt(1);
+
+    await user.click(await screen.findByRole('button', { name: /edit card: fix login bug/i }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /cancel/i }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(updateCardMock).not.toHaveBeenCalled();
+  });
+
+  // ─── Drag-and-drop / keyboard move (TASK-007 Phase 4) ──────────────────────
+
+  it('moves a card to a different column via the keyboard "Move" affordance and persists the status (AC-HAPPY-5, WCAG SC 2.1.1)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([card({ id: 10, title: 'Fix login bug', status: 'todo' })]);
+    updateCardStatusMock.mockResolvedValue(
+      card({ id: 10, title: 'Fix login bug', status: 'in_progress' }),
+    );
+    renderPageAt(1);
+
+    // Open the keyboard move alternative, pick In Progress, confirm.
+    await user.click(await screen.findByRole('button', { name: /move card: fix login bug/i }));
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('radio', { name: 'In Progress' }));
+    await user.click(within(dialog).getByRole('button', { name: /^move$/i }));
+
+    // The card lands in In Progress and is gone from To Do (observable outcome of AC-HAPPY-5).
+    const inProgress = await screen.findByRole('region', { name: 'In Progress' });
+    expect(within(inProgress).getByText('Fix login bug')).toBeInTheDocument();
+    const todo = screen.getByRole('region', { name: 'To Do' });
+    expect(within(todo).queryByText('Fix login bug')).not.toBeInTheDocument();
+
+    expect(updateCardStatusMock).toHaveBeenCalledWith('1', 10, 'in_progress', expect.anything());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('reverts the card to its original column and shows an error when the move fails (AC-ERROR-4)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([card({ id: 10, title: 'Fix login bug', status: 'todo' })]);
+    updateCardStatusMock.mockRejectedValue(
+      new ApiError('server', 'Request to /boards/1/cards/10 failed with status 500'),
+    );
+    renderPageAt(1);
+
+    await user.click(await screen.findByRole('button', { name: /move card: fix login bug/i }));
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('radio', { name: 'In Progress' }));
+    await user.click(within(dialog).getByRole('button', { name: /^move$/i }));
+
+    // The move failed: a safe rollback error appears and the card is back in To Do.
+    const alert = await screen.findByRole('alert');
+    expect(within(alert).getByText('Move could not be saved')).toBeInTheDocument();
+    const todo = screen.getByRole('region', { name: 'To Do' });
+    expect(within(todo).getByText('Fix login bug')).toBeInTheDocument();
+    const inProgress = screen.getByRole('region', { name: 'In Progress' });
+    expect(within(inProgress).queryByText('Fix login bug')).not.toBeInTheDocument();
+  });
+
+  it('never surfaces internal error detail when a move fails (Guiding Principle 5)', async () => {
+    const user = userEvent.setup();
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([card({ id: 10, title: 'Fix login bug', status: 'todo' })]);
+    updateCardStatusMock.mockRejectedValue(new ApiError('server', 'secret stack at db.query internal-detail'));
+    renderPageAt(1);
+
+    await user.click(await screen.findByRole('button', { name: /move card: fix login bug/i }));
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('radio', { name: 'Done' }));
+    await user.click(within(dialog).getByRole('button', { name: /^move$/i }));
+
+    await screen.findByRole('alert');
+    expect(screen.queryByText(/internal-detail/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/db\.query/)).not.toBeInTheDocument();
+  });
+});
+
+// ─── Real-time collaboration (TASK-007 Phase 5) ──────────────────────────────
+//
+// The page subscribes via `useRealtimeBoard`, which opens an `EventSource`. jsdom has none, so a
+// fake is stubbed for these tests only; remote events (originId !== this tab) are applied to the
+// board without a refresh (AC-REALTIME-1, AC-REALTIME-2). The page's own `getClientId()` differs
+// from the 'remote' origin used here, so de-dup never suppresses these.
+
+class FakeEventSource {
+  static instances: FakeEventSource[] = [];
+  readonly url: string;
+  readonly listeners = new Map<string, Set<(event: MessageEvent) => void>>();
+  closed = false;
+  constructor(url: string) {
+    this.url = url;
+    FakeEventSource.instances.push(this);
+  }
+  addEventListener(type: string, cb: (event: MessageEvent) => void): void {
+    const set = this.listeners.get(type) ?? new Set();
+    set.add(cb);
+    this.listeners.set(type, set);
+  }
+  removeEventListener(type: string, cb: (event: MessageEvent) => void): void {
+    this.listeners.get(type)?.delete(cb);
+  }
+  close(): void {
+    this.closed = true;
+  }
+  emit(type: string, payload: unknown): void {
+    const event = { data: JSON.stringify(payload) } as MessageEvent;
+    this.listeners.get(type)?.forEach((cb) => cb(event));
+  }
+}
+
+describe('BoardViewPage — real-time updates', () => {
+  beforeEach(() => {
+    FakeEventSource.instances = [];
+    vi.stubGlobal('EventSource', FakeEventSource as unknown as typeof EventSource);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('applies a remote card:created event into its column without a refresh (AC-REALTIME-2)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    renderPageAt(1);
+    await screen.findByRole('heading', { level: 1, name: 'Alpha Project' });
+
+    const source = FakeEventSource.instances.at(-1)!;
+    act(() =>
+      source.emit('card:created', {
+        type: 'card:created',
+        boardId: 1,
+        originId: 'remote',
+        emittedAt: '2026-06-21T10:00:00.000Z',
+        card: card({ id: 500, title: 'Pushed by Jordan', status: 'in_progress' }),
+      }),
+    );
+
+    const inProgress = await screen.findByRole('region', { name: 'In Progress' });
+    expect(within(inProgress).getByText('Pushed by Jordan')).toBeInTheDocument();
+    // Stub-detection: it lands ONLY in In Progress, not To Do.
+    const todo = screen.getByRole('region', { name: 'To Do' });
+    expect(within(todo).queryByText('Pushed by Jordan')).not.toBeInTheDocument();
+  });
+
+  it('applies a remote card:updated status change so the card moves columns (AC-REALTIME-1)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([card({ id: 10, title: 'Fix login bug', status: 'todo' })]);
+    renderPageAt(1);
+    await screen.findByText('Fix login bug');
+
+    const source = FakeEventSource.instances.at(-1)!;
+    act(() =>
+      source.emit('card:updated', {
+        type: 'card:updated',
+        boardId: 1,
+        originId: 'remote',
+        emittedAt: '2026-06-21T10:00:00.000Z',
+        card: card({ id: 10, title: 'Fix login bug', status: 'done' }),
+      }),
+    );
+
+    const done = await screen.findByRole('region', { name: 'Done' });
+    expect(within(done).getByText('Fix login bug')).toBeInTheDocument();
+    const todo = screen.getByRole('region', { name: 'To Do' });
+    expect(within(todo).queryByText('Fix login bug')).not.toBeInTheDocument();
+  });
+
+  it('applies a remote board:updated event to the board heading in place (AC-REALTIME-1)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    renderPageAt(1);
+    await screen.findByRole('heading', { level: 1, name: 'Alpha Project' });
+
+    const source = FakeEventSource.instances.at(-1)!;
+    act(() =>
+      source.emit('board:updated', {
+        type: 'board:updated',
+        boardId: 1,
+        originId: 'remote',
+        emittedAt: '2026-06-21T10:00:00.000Z',
+        board: { ...board, name: 'Renamed by Jordan' },
+      }),
+    );
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Renamed by Jordan' }),
+    ).toBeInTheDocument();
   });
 });

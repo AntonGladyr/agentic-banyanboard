@@ -2,7 +2,7 @@
 
 ## Summary
 
-- **Total Features**: 6
+- **Total Features**: 7
 - **Active Version**: None
 - **Released Versions**: 0
 - **Planning Versions**: 2 (v0.1.0, next)
@@ -25,6 +25,7 @@
 - **Target Date**: TBD
 - **Description**: Backlog for future features not yet assigned to a release.
 - **Features**:
+  - FEAT-007: Board interactivity and real-time collaboration (complete) [Level 3]
   - FEAT-006: React frontend board UI (complete) [Level 3]
   - FEAT-005: Board model with CRUD endpoints (complete) [Level 2]
   - FEAT-004: Card model with CRUD endpoints (complete) [Level 2]
@@ -99,3 +100,16 @@
 - **Linked Tasks**: TASK-006 (complete — archived 2026-06-21)
 - **Branch**: feature/FEAT-006-react-frontend-board-ui
 - **Created**: 2026-06-20
+
+### FEAT-007: Board interactivity and real-time collaboration
+
+- **Version**: next
+- **Status**: complete
+- **Priority**: high
+- **Complexity**: Level 3 (manual override; auto-evaluated as Level 4)
+- **Complexity Override Reason**: Auto-evaluation flagged Level 4 due to the new real-time transport tier spanning backend + frontend. User set Level 3 to scope it as a frontend-centric feature (architecture + UI/UX creative phases), consistent with FEAT-006.
+- **Description**: Extend the existing React frontend (FEAT-006, currently display-only) with full board interactivity: create/edit board UI, create/edit card UI, drag-and-drop of cards between columns (To Do / In Progress / Done), and real-time collaboration so multiple users see updates live. Builds on the Board and Card CRUD APIs (FEAT-004/005) and the React tier established in FEAT-006. Requires architecture (real-time sync transport, optimistic updates, dev/prod parity, observability) and UI/UX (create/edit forms, drag-and-drop interaction model) creative phases.
+- **Dependencies**: FEAT-006 (React frontend board UI), FEAT-005 (Board model), FEAT-004 (Card model)
+- **Linked Tasks**: TASK-007 (complete — archived 2026-06-21)
+- **Branch**: feature/FEAT-007-board-interactivity-realtime-collab
+- **Created**: 2026-06-21

@@ -37,6 +37,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { validateCreate, validateUpdate, validateId } from '../validation/board';
 import { notFoundError } from '../errors';
 import { create, list, findById, update, remove } from '../db/boards';
+import { notifyBoardChange } from '../realtime/notify';
 
 const boardsRouter = Router();
 
@@ -102,6 +103,8 @@ boardsRouter.patch(
       }
       req.log.info({ boardId: id }, 'board updated');
       res.status(200).json(board);
+      // Fire-and-forget real-time broadcast AFTER the response (off the critical path; never fails it).
+      notifyBoardChange(id, board, req);
     } catch (err) {
       next(err);
     }
