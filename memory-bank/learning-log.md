@@ -141,3 +141,14 @@ Chronological record of pattern extraction and consolidation events from task re
 
 ### systemPatterns.md Updates
 - None — the SSE-in-`createApp()` transport choice is captured in the new `realtime.md` learned rule and the Architecture creative doc + techContext.md `src/realtime/` tier, not in systemPatterns Guiding Principles (consistent with how the frontend tier was handled in TASK-006).
+
+---
+
+## 2026-06-21 - Consolidation (during TASK-007 archive)
+
+- Files before: 7, Files after: 7
+- Merged: 0 files (no pair has >50% topic/glob overlap — `realtime.md` shares only the `realtime` topic with `frontend.md`/`testing-patterns.md`, on disjoint glob sets `src/realtime/**`+`client/src/realtime/**` vs `client/src/**/*.ts` vs the test globs)
+- Expired: 0 bullets (oldest bullet 5 days old — all within the 90-day window)
+- Promoted: 1 file — `frontend.md` **low → medium** (evidence_count 4 ≥ promotion threshold 3; the TASK-007 reflection deferred this, the archive consolidation gate applied it)
+- Pruned: 0 excess bullets (max 6 bullets/file < max 15)
+- Reindexed: regenerated `agent-rules-index.md` (7 files; refreshed `frontend.md` priority low → medium)

@@ -1,8 +1,10 @@
 # TASK-007: Board interactivity and real-time collaboration
 
 **Complexity**: Level 3 (manual override; auto-evaluated Level 4 — see FEAT-007 override reason)
-**Status**: REFLECTION_COMPLETE
+**Status**: COMPLETE
 **Reflection**: memory-bank/reflection/reflection-TASK-007.md
+**Archived**: memory-bank/archive/archive-TASK-007.md
+**Completed**: 2026-06-21
 **Roadmap**: FEAT-007
 **Branch**: feature/FEAT-007-board-interactivity-realtime-collab
 **Worktree**: N/A
@@ -539,9 +541,13 @@ Frontend write foundation → board forms → card forms → drag-and-drop → r
 ## Build Execution State
 
 **Build Status**: IDLE
-**Current Phase**: REFLECT → ARCHIVE
-**Current Step**: Reflection COMPLETE — reflection doc + 4 learnings extracted; committed. Next: /banyan-archive TASK-007
+**Current Phase**: COMPLETE
+**Current Step**: Archived 2026-06-21 — archive doc created, learned rules consolidated (frontend.md promoted to medium), merged to master via local-merge, feature branch deleted.
 **Can Resume**: NO
+**Merge Status**: merged
+**Merge Commit**: (recorded post-merge below)
+**Worktree Cleaned**: N/A (no worktree)
+**Branch Deleted**: YES
 **Current Build**: Phase 6: E2E + verification (TASK-007) — ALL 6 PHASES COMPLETE → BUILD_COMPLETE
 **Build Started**: 2026-06-21
 **Phase Number**: 6 of 6

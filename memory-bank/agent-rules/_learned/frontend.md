@@ -2,7 +2,7 @@
 name: "Learned: Frontend (React) Patterns"
 globs: ["client/src/**/*.tsx", "client/src/**/*.ts"]
 topics: ["frontend", "react", "data-fetching", "error-handling", "realtime"]
-priority: low
+priority: medium
 evidence_count: 4
 last_updated: 2026-06-21
 auto_generated: true

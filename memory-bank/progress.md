@@ -2,6 +2,17 @@
 
 ---
 
+## Task Archive: TASK-007
+
+**Task**: Board interactivity and real-time collaboration
+**Status**: ✅ ARCHIVED
+**Date**: 2026-06-21
+**Archive**: `memory-bank/archive/archive-TASK-007.md`
+**Roadmap**: FEAT-007 (complete)
+**Outcome**: All 12 ACs met with test/E2E evidence; 105 net-new tests (client Vitest 34→118, backend Jest 138→150, Playwright 7→16); 0 blocking code-review findings across all 6 phases. Delivered four create/edit form surfaces, optimistic drag-and-drop with rollback + keyboard alternative (WCAG SC 2.1.1), and the project's first real-time tier (SSE in `src/realtime/`). Merged to master via local-merge; feature branch deleted. Continuous-learning consolidation promoted `frontend.md` low → medium.
+
+---
+
 ## Reflection: TASK-007 (Board interactivity & real-time) — REFLECTION_COMPLETE
 
 **Date**: 2026-06-21
