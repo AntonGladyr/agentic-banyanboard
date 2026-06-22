@@ -2,6 +2,21 @@
 
 ---
 
+## Reflection: TASK-007 (Board interactivity & real-time) — REFLECTION_COMPLETE
+
+**Date**: 2026-06-21
+**Document**: memory-bank/reflection/reflection-TASK-007.md
+**Dimensions Evaluated**: Task Quality, Ecosystem Effectiveness
+
+- **Task Quality: Excellent** — all 12 ACs met with direct test/E2E evidence (AC-ENTRY-1/2, AC-HAPPY-1→5, AC-REALTIME-1/2, AC-ERROR-1→4, AC-LOADING-1, AC-NAV-1); 105 net-new tests (client Vitest 34→118, backend Jest 138→150, Playwright 7→16) vs. the 44–54 plan — all in the quality direction; 0 blocking code-review findings across all 6 phases; zero mid-phase design reversals; both creative docs held as implementation contracts. SSE-in-`createApp()` (Architecture Decision 1) was the highest-impact choice — zero new backend deps, no Vite proxy change, native `EventSource` reconnect, two-tab `realtime.spec.ts` stable across `--repeat-each=3`.
+- **Ecosystem Effectiveness: Moderately Effective** — creative-phase-as-implementation-contract again eliminated design re-derivation across all 6 build phases; cross-phase pre-plumbing (Phase-1 `X-Client-Id` consumed in Phase 5) avoided rework. Recurring friction: by-task session logs absent for the **7th consecutive task** (now a systemic audit gap); `/banyan-uat` skipped again (MCP availability); no frontend context file in the plugin (2nd consecutive task).
+- **Continuous learning**: 4 learnings extracted → **1 created** (`realtime.md` — SSE-in-`createApp()` over WebSocket for single-host server-push), **2 amended** (`frontend.md` evidence 2→4: EventSource useRef+unmount-close, X-Client-Id→originId echo de-dup; `testing-patterns.md` evidence 5→6: dedicated real-DB Playwright project for cross-context SSE/WebSocket). systemPatterns unchanged.
+- **Carried follow-ups**: SSE settle timing in `realtime.spec.ts`; Playwright `globalSetup` for DB setup; `banyanboard_e2e` accumulation cleanup; OpenAPI spec (carried since FEAT-004/005); multi-stage Dockerfile; prune `ErrorMessage.backLink`; `node-pg-migrate` dev-tree audit triage.
+
+Recommendation: ready to archive. Next: /banyan-archive TASK-007.
+
+---
+
 ## Build Phase: TASK-007 (Board interactivity & real-time) — Phase 6/6 COMPLETE → BUILD_COMPLETE
 
 **Date**: 2026-06-21
