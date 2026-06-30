@@ -2,6 +2,20 @@
 
 ---
 
+## Build Phase: TASK-008 (Realtime Activity Feed) — Phase 4/4 COMPLETE → BUILD_COMPLETE
+
+**Date**: 2026-06-30
+**Status**: All 4 phases complete on branch `feature/FEAT-008-realtime-activity-feed` → next: human review, then `/banyan-reflect TASK-008` then `/banyan-archive TASK-008` (Level 3).
+
+#### Phase 4 — E2E implementation (post-UAT) — COMPLETE
+- Implemented the UAT-generated spec (`memory-bank/uat/spec-TASK-008-e2e.md`) as **7 new Playwright tests** across both serving models. `client/e2e/activity-feed.spec.ts` (hermetic `chromium`, mocked API): AC-ENTRY-1+AC-EMPTY-1 (panel visible + "No activity yet"), AC-LOAD-1+AC-HAPPY-3 (persisted history newest-first with title/from→to/timestamp + live-region attrs), AC-LOADING-1 (route delayed >200ms → `Spinner` observable then list), AC-HAPPY-2 own-tab (move via MoveCardDialog → injected `activity:card_moved` SSE frame → entry prepends "just now"), Scenario 2 mobile 375×667 (feed stacks BELOW the kanban via bounding-box + no body x-overflow), Scenario 3 (activity-fetch 500 → compact inline "Could not load activity", board still renders, no leaked detail — GP5). `client/e2e/activity-feed.realtime.spec.ts` (real-backend `realtime`): AC-HAPPY-2 cross-tab — a real card move records a row + delivers the entry to BOTH the mover and observer tabs over genuine SSE (no `originId` → mover sees its own), plus persisted-history-on-reload.
+- **Test infra**: `client/e2e/fixtures.ts` extended — `ActivityFixture`/`makeActivity`, `seedActivity`/`seedActivityRoute` (registered after the base seed so it wins the `/activity` URL; `delayMs` exercises the Spinner), and `installFakeEventSource`/`emitActivityFrame` — a controllable `EventSource` stub exposing `window.__emitSSE` so the mocked project can inject SSE frames a mock cannot broadcast (installed only in the `chromium` spec; the `realtime` spec keeps the real `EventSource`). `scripts/e2e-db-setup.mjs` now TRUNCATEs `activity_events` (RESTART IDENTITY) alongside cards/boards.
+- **Verification**: full Playwright suite **23/23 green** (16 pre-existing + 7 new, both projects, no regressions); client `tsc -b` + `vite build` clean. Postgres reachable; the TASK-008 migration is applied by the realtime harness (covers UAT-REC-01 for the E2E DB — a deploy-runbook gap, not a code defect).
+- **Gotchas for future E2E**: (1) kanban cards ALSO expose `role="listitem"` → feed-entry queries MUST scope to the `complementary` "Activity" landmark. (2) the MoveCardDialog submit is `{ name: 'Move', exact: true }` (else it matches the per-card "Move card: …" buttons). (3) the fake `EventSource` must be installed via `addInitScript` BEFORE navigation.
+- Phases 1–3 (persistence DAL, recording+endpoint+broadcast, frontend ActivityFeed) were tracked in `memory-bank/tasks/TASK-008.md` Execution State: 52 unit/integration tests added across the three phases (backend 159→174, client → 145), all green.
+
+---
+
 ## Task Archive: TASK-007
 
 **Task**: Board interactivity and real-time collaboration

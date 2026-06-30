@@ -157,9 +157,9 @@ Wait for these requests to settle before asserting downstream UI state. Only pat
 
 ## Acceptance for Implementation
 
-- [ ] All scenarios present
-- [ ] Selectors from Selector Registry applied
-- [ ] Network waits applied where listed
-- [ ] Cleanup fires in `afterAll`/`afterEach` or equivalent
-- [ ] Test runs green locally
-- [ ] Test runs green in CI
+- [x] All scenarios present — Scenarios 1–3 in `client/e2e/activity-feed.spec.ts` (`chromium`), Scenario 4 in `client/e2e/activity-feed.realtime.spec.ts` (`realtime`). Scenario 1 split into 4 hermetic tests (empty / history / loading / own-tab live entry).
+- [x] Selectors from Selector Registry applied — feed `listitem` queries SCOPED to the `complementary` "Activity" landmark (the kanban cards also expose `listitem`); the dialog submit uses `{ name: 'Move', exact: true }` so it does not collide with the per-card "Move card: …" buttons.
+- [x] Network waits applied where listed — `waitForResponse` on the `PATCH /cards/:id` for the own-tab move; web-first auto-retrying `toHaveAttribute`/`toHaveCount` (with SSE budget timeouts) elsewhere.
+- [x] Cleanup fires in `afterAll`/`afterEach` or equivalent — hermetic project holds no state; the `realtime` test closes its second context in `finally`, and the isolated `banyanboard_e2e` DB is truncated by `scripts/e2e-db-setup.mjs` on the next run (now truncates `activity_events` too).
+- [x] Test runs green locally — full suite `23 passed` (both projects), incl. 7 new TASK-008 tests; client `tsc -b` + `vite build` clean.
+- [ ] Test runs green in CI — to be confirmed on next CI run (no CI-specific change needed; both webServers/projects are CI-configured).

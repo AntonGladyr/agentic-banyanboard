@@ -69,8 +69,12 @@ async function migrateAndReset() {
   await client.connect();
   try {
     // RESTART IDENTITY so ids are predictable across runs; CASCADE clears cards via the FK.
-    await client.query('TRUNCATE TABLE cards, boards RESTART IDENTITY CASCADE');
-    console.log('[e2e-db-setup] truncated boards + cards');
+    // `activity_events` (TASK-008) is named explicitly so its serial id also restarts — a TRUNCATE of
+    // `boards` CASCADE would clear its rows via the board FK, but would NOT reset its identity sequence.
+    await client.query(
+      'TRUNCATE TABLE activity_events, cards, boards RESTART IDENTITY CASCADE',
+    );
+    console.log('[e2e-db-setup] truncated boards + cards + activity_events');
   } finally {
     await client.end();
   }

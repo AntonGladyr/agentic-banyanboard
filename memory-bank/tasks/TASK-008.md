@@ -1,7 +1,7 @@
 # TASK-008: Realtime Activity Feed
 
 **Complexity**: Level 3
-**Status**: UAT_PASS
+**Status**: BUILD_COMPLETE
 **Roadmap Link**: FEAT-008
 **Branch**: feature/FEAT-008-realtime-activity-feed
 **Worktree**: .claude-worktrees/FEAT-008
@@ -322,7 +322,7 @@ testable and committed.
 - [x] **Phase 2 — Recording, REST endpoint & SSE broadcast**: capture `from_status` in the cards PATCH handler (mechanism per Architecture creative), insert activity row on status change, add `activity:card_moved` to `events.ts` + `notifyCardMoved` in `notify.ts`, new `src/routes/activity.ts` mounted in `routes/index.ts`, tests (`activity.test.ts` route + extend `cards.test.ts`). ✅ COMPLETE (2026-06-30) — 15 new tests (cards.test.ts +6, mutationBroadcast.test.ts +3, activity.test.ts +6); full suite 174/174 green; tsc clean.
 - [x] **Phase 3 — Frontend ActivityFeed & integration**: `ActivityEvent`/`activity:card_moved` in `client/src/api/types.ts`, `getActivity` in `apiClient.ts`, `onActivityEvent` in `useRealtimeBoard.ts`, new `ActivityFeed` component (loading/empty/list per UI/UX creative), wire into `BoardViewPage.tsx` layout, tests. ✅ COMPLETE (2026-06-30) — 28 new tests (labels 2, formatRelative 8, apiClient +3, useRealtimeBoard +2, ActivityFeed 8, BoardViewPage +5); full client suite 145/145 green; tsc clean.
 - [x] **UAT** (`/banyan-uat`) — walked the user journey (run `20260630-001`, 2026-06-30): PASS_WITH_RECOMMENDATIONS (Required=0, Recommended=3). Report `memory-bank/uat/uat-TASK-008.md`; E2E spec `memory-bank/uat/spec-TASK-008-e2e.md`.
-- [ ] **Phase 4 — E2E implementation** (post-UAT): implement the generated E2E spec (entry-to-success: open board → move card → new feed entry appears at top with title + from→to + timestamp).
+- [x] **Phase 4 — E2E implementation** (post-UAT): implement the generated E2E spec (entry-to-success: open board → move card → new feed entry appears at top with title + from→to + timestamp). ✅ COMPLETE (2026-06-30) — 7 new Playwright tests (`client/e2e/activity-feed.spec.ts` Scenarios 1–3 in the hermetic `chromium` project: 4 happy + mobile stack-below + non-fatal error; `client/e2e/activity-feed.realtime.spec.ts` Scenario 4 cross-tab SSE in the real-backend `realtime` project). Full E2E suite 23/23 green (both projects); client `tsc -b` + `vite build` clean. `scripts/e2e-db-setup.mjs` now truncates `activity_events`; `fixtures.ts` extended with activity fixtures + a controllable `EventSource` stub for injecting `activity:card_moved` frames in the mocked project.
 
 ## Creative Phases
 
@@ -335,17 +335,17 @@ testable and committed.
 
 ## Build Execution State
 
-**Build Status**: COMPLETE (Phase 3)
-**Current Build**: Phase 3: Frontend ActivityFeed & integration (TASK-008) — COMPLETE
+**Build Status**: BUILD_COMPLETE (all 4 phases done)
+**Current Build**: Phase 4: E2E implementation (post-UAT) (TASK-008) — COMPLETE
 **Build Started**: 2026-06-30
-**Phase Number**: 3 of 4 (3 build phases + E2E)
+**Phase Number**: 4 of 4 (3 build phases + E2E)
 **Is Multi-Phase**: YES
 
 ### Current Build Step
 **Step**: Step 11 - Phase Git Completion
 **Status**: COMPLETE
 **Completed**: 2026-06-30
-**Output**: Phase 3 committed to feature/FEAT-008-realtime-activity-feed
+**Output**: Phase 4 (E2E) committed to feature/FEAT-008-realtime-activity-feed; full E2E suite 23/23 green
 
 ### Completed Steps (Phase 3)
 - Step 0.1 Agent Rules: COMPLETE (2026-06-30) - index present, no rule files → nothing to load
@@ -362,9 +362,16 @@ testable and committed.
 - (Phase 3 executed in-orchestrator with TDD discipline — frontend phase, mirrors Phases 1 & 2)
 
 ### Resumption Notes
-**Can Resume**: NO (Phase 3 complete; awaiting human review)
+**Can Resume**: NO (all 4 phases complete; awaiting human review)
 **Resume From**: N/A
-**Notes**: Next: `/banyan-uat` to walk the UI/UX user journey (open board → observe feed → move card → see new entry at top + cross-tab). On PASS it generates the E2E spec for Phase 4. Phase-3 gotchas for future reference: (1) `getActivity` must be fired SEPARATELY from the board/cards `Promise.all` — folding it in would make a feed failure knock out the whole board (it is non-fatal by design). (2) ActivityFeed `<aside>` is queried in tests via `getByRole('complementary', { name: 'Activity' })` — the name comes from `aria-labelledby` → the `<h2>`. (3) The page-level `getActivity` mock must be defaulted (`mockResolvedValue([])` in a beforeEach) or every existing BoardViewPage test breaks, since the feed fetch fires on every mount.
+**Notes**: Next: `/banyan-reflect TASK-008` to capture learnings, then `/banyan-archive TASK-008` (Level 3 — reflect recommended, archive optional). Phase-3 gotchas for future reference: (1) `getActivity` must be fired SEPARATELY from the board/cards `Promise.all` — folding it in would make a feed failure knock out the whole board (it is non-fatal by design). (2) ActivityFeed `<aside>` is queried in tests via `getByRole('complementary', { name: 'Activity' })` — the name comes from `aria-labelledby` → the `<h2>`. (3) The page-level `getActivity` mock must be defaulted (`mockResolvedValue([])` in a beforeEach) or every existing BoardViewPage test breaks, since the feed fetch fires on every mount.
+
+### Phase 4 — COMPLETE (2026-06-30)
+- Implemented `memory-bank/uat/spec-TASK-008-e2e.md` as 7 Playwright tests. `client/e2e/activity-feed.spec.ts` (`chromium`, hermetic/mocked): AC-ENTRY-1+AC-EMPTY-1, AC-LOAD-1+AC-HAPPY-3 (newest-first), AC-LOADING-1 (delayed route → Spinner), AC-HAPPY-2 own-tab (injected SSE frame), Scenario 2 mobile stack-below (bounding-box + no body x-overflow), Scenario 3 non-fatal feed error. `client/e2e/activity-feed.realtime.spec.ts` (`realtime`, real backend): AC-HAPPY-2 cross-tab over real SSE + persisted-history-on-reload.
+- `fixtures.ts` extended: `ActivityFixture`/`makeActivity`, `seedActivity`/`seedActivityRoute` (registered AFTER the base seed so it wins the `/activity` URL; `delayMs` exercises the Spinner), and `installFakeEventSource`/`emitActivityFrame` — a controllable `EventSource` stub exposing `window.__emitSSE` so the mocked project can inject `activity:card_moved` frames (a mock can't broadcast real SSE).
+- `scripts/e2e-db-setup.mjs` now TRUNCATEs `activity_events` (RESTART IDENTITY) alongside cards/boards for deterministic realtime runs.
+- Full E2E suite **23/23 green** (both projects, no regressions); client `tsc -b` + `vite build` clean. Postgres reachable; TASK-008 migration applied by the realtime harness (covers UAT-REC-01 for the E2E DB).
+- **Phase-4 gotchas**: (1) the kanban cards ALSO expose `role="listitem"`, so feed-entry queries MUST be scoped to the `complementary`/"Activity" landmark — an unscoped `getByRole('listitem')` matches the board's cards. (2) The MoveCardDialog submit is `getByRole('button', { name: 'Move', exact: true })` — without `exact` it collides with the per-card "Move card: …" buttons. (3) The fake `EventSource` is installed only in the `chromium` spec via `addInitScript` (before navigation); the `realtime` spec keeps the real one.
 
 ### UAT — PASS_WITH_RECOMMENDATIONS (run 20260630-001, 2026-06-30)
 - Sections: happy (full) + mobile. Persona: Alex the Dev. Env: dev (Vite :5173 + backend :3000, REALTIME_ENABLED=true). Orchestrator-driven single-browser walk.

@@ -326,3 +326,155 @@ export async function pointerDragCardToColumn(
   });
   await page.mouse.up();
 }
+
+// ─── Activity feed fixtures + SSE injection (TASK-008 Phase 4) ──────────────────
+//
+// The hermetic `chromium` project mocks the new activity API (`GET /boards/:id/activity`) and, for the
+// own-tab live-entry scenario, INJECTS a simulated `activity:card_moved` SSE frame — a mocked project
+// cannot broadcast a real one (that is the `realtime` project's job, in activity-feed.realtime.spec.ts).
+// The injection works by replacing the browser's `EventSource` (see installFakeEventSource) with a
+// controllable stub the test drives via `emitActivityFrame`.
+
+/** An activity event fixture mirroring the backend `activity_events` row contract (src/db/activity.ts). */
+export interface ActivityFixture {
+  id: number;
+  board_id: number;
+  card_id: number;
+  card_title: string;
+  from_status: 'todo' | 'in_progress' | 'done';
+  to_status: 'todo' | 'in_progress' | 'done';
+  actor: string;
+  occurred_at: string;
+}
+
+/** Build an activity fixture; `actor` defaults to the v1 `'anonymous'` stub (TASK-008 § Actor Identity). */
+export function makeActivity(
+  id: number,
+  board_id: number,
+  card_id: number,
+  card_title: string,
+  from_status: ActivityFixture['from_status'],
+  to_status: ActivityFixture['to_status'],
+  occurred_at: string,
+  actor = 'anonymous',
+): ActivityFixture {
+  return { id, board_id, card_id, card_title, from_status, to_status, actor, occurred_at };
+}
+
+/**
+ * Install a dedicated mock for `GET /api/v1/boards/:id/activity`. Registered AFTER the base
+ * `seedApi`/`seedWritableApi` route so it takes precedence for the activity URL (Playwright matches
+ * the most-recently-added route first). `respond` decides the response — return a fixture array for a
+ * history/empty list, or call `route.fulfill({ status: 500 })` / `route.abort()` to drive the
+ * non-fatal error state (Scenario 3). `delayMs` defers fulfillment so the >200ms Spinner appearance
+ * delay is observable (AC-LOADING-1) — the live walk could not trigger it (sub-200ms fetch).
+ */
+export async function seedActivityRoute(
+  page: Page,
+  respond: (route: Route) => Promise<void> | void,
+  delayMs = 0,
+): Promise<void> {
+  await page.route('**/api/v1/boards/*/activity', async (route) => {
+    if (delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    await respond(route);
+  });
+}
+
+/** Convenience: mock the activity endpoint with a fixed JSON array (newest-first per the AC contract). */
+export async function seedActivity(
+  page: Page,
+  entries: ActivityFixture[],
+  delayMs = 0,
+): Promise<void> {
+  await seedActivityRoute(page, (route) => fulfillJson(route, entries), delayMs);
+}
+
+/**
+ * Replace `window.EventSource` with a controllable stub so the mocked project can inject SSE frames.
+ * MUST be called before navigation (`page.addInitScript` runs before page scripts). The stub records
+ * every open connection and exposes `window.__emitSSE(type, payload)` which dispatches a `MessageEvent`
+ * (with a JSON `data` string) to every matching listener — exactly what `useRealtimeBoard` consumes.
+ *
+ * Only the hermetic `chromium` project uses this; the `realtime` project keeps the real `EventSource`.
+ */
+export async function installFakeEventSource(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    type Listener = (event: MessageEvent) => void;
+    const instances: FakeEventSource[] = [];
+
+    class FakeEventSource {
+      static readonly CONNECTING = 0;
+      static readonly OPEN = 1;
+      static readonly CLOSED = 2;
+      readonly url: string;
+      readyState = FakeEventSource.OPEN;
+      onopen: ((event: Event) => void) | null = null;
+      onmessage: Listener | null = null;
+      onerror: ((event: Event) => void) | null = null;
+      private readonly listeners = new Map<string, Set<Listener>>();
+
+      constructor(url: string) {
+        this.url = url;
+        instances.push(this);
+        // Mimic the async open the real EventSource fires once connected.
+        setTimeout(() => this.onopen?.(new Event('open')), 0);
+      }
+
+      addEventListener(type: string, fn: Listener): void {
+        let set = this.listeners.get(type);
+        if (set === undefined) {
+          set = new Set();
+          this.listeners.set(type, set);
+        }
+        set.add(fn);
+      }
+
+      removeEventListener(type: string, fn: Listener): void {
+        this.listeners.get(type)?.delete(fn);
+      }
+
+      close(): void {
+        this.readyState = FakeEventSource.CLOSED;
+        const i = instances.indexOf(this);
+        if (i >= 0) instances.splice(i, 1);
+      }
+
+      dispatch(type: string, data: string): void {
+        const event = new MessageEvent(type, { data });
+        this.listeners.get(type)?.forEach((fn) => fn(event));
+        if (type === 'message') this.onmessage?.(event);
+      }
+    }
+
+    (window as unknown as { EventSource: unknown }).EventSource = FakeEventSource;
+    (window as unknown as { __emitSSE: (type: string, payload: unknown) => void }).__emitSSE = (
+      type: string,
+      payload: unknown,
+    ): void => {
+      const data = typeof payload === 'string' ? payload : JSON.stringify(payload);
+      instances.forEach((es) => es.dispatch(type, data));
+    };
+  });
+}
+
+/**
+ * Inject a simulated `activity:card_moved` SSE frame into the page (after `installFakeEventSource`).
+ * The activity event carries NO `originId` (mirrors the backend envelope), so `useRealtimeBoard`
+ * never echo-drops it and the originating tab sees its own entry appear (AC-HAPPY-2.2).
+ */
+export async function emitActivityFrame(page: Page, activity: ActivityFixture): Promise<void> {
+  await page.evaluate((row) => {
+    const frame = {
+      type: 'activity:card_moved',
+      boardId: row.board_id,
+      emittedAt: row.occurred_at,
+      activity: row,
+    };
+    (window as unknown as { __emitSSE: (type: string, payload: unknown) => void }).__emitSSE(
+      'activity:card_moved',
+      frame,
+    );
+  }, activity);
+}

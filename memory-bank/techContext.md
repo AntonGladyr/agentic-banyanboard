@@ -161,4 +161,5 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 
 ## Last Refreshed
 
+2026-06-30 (TASK-008 Phase 4 — E2E implementation: 7 Playwright tests for the activity feed — `client/e2e/activity-feed.spec.ts` (hermetic `chromium`: empty/history/loading/own-tab-live/mobile/non-fatal-error) + `client/e2e/activity-feed.realtime.spec.ts` (real-backend `realtime`: cross-tab SSE). `fixtures.ts` gains activity fixtures + a controllable `EventSource` stub (`installFakeEventSource`/`emitActivityFrame`) for injecting `activity:card_moved` frames in the mocked project; `scripts/e2e-db-setup.mjs` truncates `activity_events`. Full E2E suite 23/23. TASK-008 BUILD_COMPLETE — all 4 phases done)
 2026-06-30 (TASK-008 Phase 3 — frontend `ActivityFeed` panel on the board view, `getActivity` client + `onActivityEvent` SSE routing + parallel non-fatal feed fetch; backend Phases 1–2 + frontend Phase 3 complete, E2E is Phase 4 post-UAT)
