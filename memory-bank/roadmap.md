@@ -2,7 +2,7 @@
 
 ## Summary
 
-- **Total Features**: 7
+- **Total Features**: 8
 - **Active Version**: None
 - **Released Versions**: 0
 - **Planning Versions**: 2 (v0.1.0, next)
@@ -25,6 +25,7 @@
 - **Target Date**: TBD
 - **Description**: Backlog for future features not yet assigned to a release.
 - **Features**:
+  - FEAT-008: Realtime Activity Feed (in_progress) [Level 3]
   - FEAT-007: Board interactivity and real-time collaboration (complete) [Level 3]
   - FEAT-006: React frontend board UI (complete) [Level 3]
   - FEAT-005: Board model with CRUD endpoints (complete) [Level 2]
@@ -113,3 +114,15 @@
 - **Linked Tasks**: TASK-007 (complete — archived 2026-06-21)
 - **Branch**: feature/FEAT-007-board-interactivity-realtime-collab
 - **Created**: 2026-06-21
+
+### FEAT-008: Realtime Activity Feed
+
+- **Version**: next
+- **Status**: planned
+- **Priority**: high
+- **Complexity**: Level 3
+- **Description**: Track and display a realtime activity feed of card movements between columns (To Do / In Progress / Done). When a card is moved, an activity event is recorded (actor, card, source/target column, timestamp) and surfaced live to all connected clients via the realtime transport established in FEAT-007. Builds on the documented Domain Event Pattern (card actions emit domain events; consumers subscribe to event streams). Requires architecture (activity-event model, persistence/retention strategy, feed delivery over the existing realtime channel) and UI/UX (feed presentation, ordering, empty/loading states) creative phases. Scoped to card-movement events for v1.
+- **Dependencies**: FEAT-007 (Board interactivity and real-time collaboration), FEAT-006 (React frontend board UI), FEAT-004 (Card model)
+- **Linked Tasks**: TASK-008
+- **Branch**: feature/FEAT-008-realtime-activity-feed
+- **Created**: 2026-06-30
