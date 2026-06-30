@@ -2,6 +2,9 @@
 .agent-logs/
 .claude-logs/
 
+# UAT run artifacts (screenshots, GIFs, walker JSON, runlog) — artifact_git_policy: ignore
+memory-bank/uat/artifacts/
+
 # Banyan Memory Bank plugin source (tooling, not project code)
 banyan-memory-bank/
 

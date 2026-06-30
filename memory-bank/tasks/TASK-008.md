@@ -1,7 +1,7 @@
 # TASK-008: Realtime Activity Feed
 
 **Complexity**: Level 3
-**Status**: CREATIVE_COMPLETE
+**Status**: UAT_PASS
 **Roadmap Link**: FEAT-008
 **Branch**: feature/FEAT-008-realtime-activity-feed
 **Worktree**: .claude-worktrees/FEAT-008
@@ -321,7 +321,7 @@ testable and committed.
 - [x] **Phase 1 — Activity persistence layer**: migration `create-activity-events-table.js` (columns per Specification §Data persisted; `actor varchar(255) NOT NULL DEFAULT 'anonymous'`; index on `(board_id, occurred_at DESC)`), `src/db/activity.ts` DAL (`ActivityEvent`, `insert`, `listByBoard`), `src/db/activity.test.ts`. ✅ COMPLETE (2026-06-30) — 9 DAL tests pass, full suite 159/159 green, tsc clean.
 - [x] **Phase 2 — Recording, REST endpoint & SSE broadcast**: capture `from_status` in the cards PATCH handler (mechanism per Architecture creative), insert activity row on status change, add `activity:card_moved` to `events.ts` + `notifyCardMoved` in `notify.ts`, new `src/routes/activity.ts` mounted in `routes/index.ts`, tests (`activity.test.ts` route + extend `cards.test.ts`). ✅ COMPLETE (2026-06-30) — 15 new tests (cards.test.ts +6, mutationBroadcast.test.ts +3, activity.test.ts +6); full suite 174/174 green; tsc clean.
 - [x] **Phase 3 — Frontend ActivityFeed & integration**: `ActivityEvent`/`activity:card_moved` in `client/src/api/types.ts`, `getActivity` in `apiClient.ts`, `onActivityEvent` in `useRealtimeBoard.ts`, new `ActivityFeed` component (loading/empty/list per UI/UX creative), wire into `BoardViewPage.tsx` layout, tests. ✅ COMPLETE (2026-06-30) — 28 new tests (labels 2, formatRelative 8, apiClient +3, useRealtimeBoard +2, ActivityFeed 8, BoardViewPage +5); full client suite 145/145 green; tsc clean.
-- [ ] **UAT** (`/banyan-uat`) — walk the user journey produced by the UI/UX creative; emit findings; on PASS generate the E2E spec.
+- [x] **UAT** (`/banyan-uat`) — walked the user journey (run `20260630-001`, 2026-06-30): PASS_WITH_RECOMMENDATIONS (Required=0, Recommended=3). Report `memory-bank/uat/uat-TASK-008.md`; E2E spec `memory-bank/uat/spec-TASK-008-e2e.md`.
 - [ ] **Phase 4 — E2E implementation** (post-UAT): implement the generated E2E spec (entry-to-success: open board → move card → new feed entry appears at top with title + from→to + timestamp).
 
 ## Creative Phases
@@ -365,6 +365,15 @@ testable and committed.
 **Can Resume**: NO (Phase 3 complete; awaiting human review)
 **Resume From**: N/A
 **Notes**: Next: `/banyan-uat` to walk the UI/UX user journey (open board → observe feed → move card → see new entry at top + cross-tab). On PASS it generates the E2E spec for Phase 4. Phase-3 gotchas for future reference: (1) `getActivity` must be fired SEPARATELY from the board/cards `Promise.all` — folding it in would make a feed failure knock out the whole board (it is non-fatal by design). (2) ActivityFeed `<aside>` is queried in tests via `getByRole('complementary', { name: 'Activity' })` — the name comes from `aria-labelledby` → the `<h2>`. (3) The page-level `getActivity` mock must be defaulted (`mockResolvedValue([])` in a beforeEach) or every existing BoardViewPage test breaks, since the feed fetch fires on every mount.
+
+### UAT — PASS_WITH_RECOMMENDATIONS (run 20260630-001, 2026-06-30)
+- Sections: happy (full) + mobile. Persona: Alex the Dev. Env: dev (Vite :5173 + backend :3000, REALTIME_ENABLED=true). Orchestrator-driven single-browser walk.
+- Result: Required=0, Recommended=3, Optional=0 → PASS. E2E spec generated (Playwright, 4 scenarios).
+- ✅ Verified live: AC-ENTRY-1 (feed sidebar visible), AC-EMPTY-1 ("No activity yet"), AC-LOAD-1 (persisted history newest-first on reload), AC-HAPPY-2 (live entry own-tab + cross-tab via SSE within ~1s), AC-HAPPY-3 (REST 200 array, occurred_at DESC, 8 keys, actor='anonymous'), AC-ERROR-1 (404), AC-ERROR-2 (400), AC-SCOPED-1 (board-scoped), a11y affordances present (aside landmark, role=list, aria-live=polite, per-entry aria-label, ISO title).
+- ⚠️ **UAT-REC-01 (high)**: the Phase-1 migration `1783022741842_create-activity-events-table` was NOT applied to the dev DB → `GET .../activity` 500'd for all boards until `npm run migrate` was run (remediated during UAT; table + index created). Deploy runbook must apply migrations.
+- ⚠️ **UAT-REC-02 (high)**: `npm run migrate` does not load `.env` (SASL "client password must be a string"); needs explicit `DATABASE_URL`. DX/ops paper-cut.
+- ⚠️ **UAT-REC-03 (low, capped)**: mobile ≤900px stack-below layout not verifiable — UAT Chrome window couldn't be constrained below ~1536px. Cover in Phase-4 Playwright with explicit viewport.
+- Report: `memory-bank/uat/uat-TASK-008.md` · Spec: `memory-bank/uat/spec-TASK-008-e2e.md` · Artifacts: `memory-bank/uat/artifacts/20260630-001/`
 
 ### Phase 2 — COMPLETE (2026-06-30)
 - capture from_status pre-flight in cards PATCH, insert activity row on status change, activity:card_moved event + notifyCardMoved, src/routes/activity.ts mounted; 15 new tests; full suite 174/174; tsc clean; committed. Gotcha: pg returns fresh row per query — test mocks must return COPIES (pre-flight findById snapshot must not alias the row UPDATE mutates in place).
