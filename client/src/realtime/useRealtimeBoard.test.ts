@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useRealtimeBoard } from './useRealtimeBoard';
 import type { RealtimeHandlers } from './useRealtimeBoard';
-import type { BoardRealtimeEvent, CardRealtimeEvent } from '../api/types';
+import type { ActivityRealtimeEvent, BoardRealtimeEvent, CardRealtimeEvent } from '../api/types';
 
 /** A minimal EventSource stand-in that records instances and lets tests emit named events. */
 class FakeEventSource {
@@ -74,8 +74,28 @@ function cardEvent(type: CardRealtimeEvent['type'], overrides: Partial<CardRealt
 function makeHandlers(): RealtimeHandlers & {
   onCardEvent: ReturnType<typeof vi.fn>;
   onBoardEvent: ReturnType<typeof vi.fn>;
+  onActivityEvent: ReturnType<typeof vi.fn>;
 } {
-  return { onCardEvent: vi.fn(), onBoardEvent: vi.fn() };
+  return { onCardEvent: vi.fn(), onBoardEvent: vi.fn(), onActivityEvent: vi.fn() };
+}
+
+function activityEvent(overrides: Partial<ActivityRealtimeEvent> = {}): ActivityRealtimeEvent {
+  return {
+    type: 'activity:card_moved',
+    boardId: 1,
+    emittedAt: '2026-06-30T11:59:30.000Z',
+    activity: {
+      id: 7,
+      board_id: 1,
+      card_id: 10,
+      card_title: 'Fix login bug',
+      from_status: 'todo',
+      to_status: 'in_progress',
+      actor: 'anonymous',
+      occurred_at: '2026-06-30T11:59:30.000Z',
+    },
+    ...overrides,
+  };
 }
 
 beforeEach(() => {
@@ -128,6 +148,31 @@ describe('useRealtimeBoard', () => {
 
     expect(handlers.onBoardEvent).toHaveBeenCalledWith(event);
     expect(handlers.onCardEvent).not.toHaveBeenCalled();
+  });
+
+  it('routes an activity:card_moved event to onActivityEvent (TASK-008)', () => {
+    const handlers = makeHandlers();
+    renderHook(() => useRealtimeBoard(1, 'tab-origin', handlers));
+
+    const source = FakeEventSource.instances[0]!;
+    const event = activityEvent();
+    source.emit('activity:card_moved', event);
+
+    expect(handlers.onActivityEvent).toHaveBeenCalledWith(event);
+    expect(handlers.onCardEvent).not.toHaveBeenCalled();
+    expect(handlers.onBoardEvent).not.toHaveBeenCalled();
+  });
+
+  it('never echo-drops an activity event — the originating tab sees its own move (AC-HAPPY-2.2)', () => {
+    const handlers = makeHandlers();
+    // Subscribe as 'my-tab'. Activity events carry NO originId, so the de-dup guard cannot match —
+    // even the mover's own tab must receive the entry.
+    renderHook(() => useRealtimeBoard(1, 'my-tab', handlers));
+
+    const source = FakeEventSource.instances[0]!;
+    source.emit('activity:card_moved', activityEvent());
+
+    expect(handlers.onActivityEvent).toHaveBeenCalledTimes(1);
   });
 
   it("drops this tab's own echo (originId === origin) so it is not double-applied (R5)", () => {

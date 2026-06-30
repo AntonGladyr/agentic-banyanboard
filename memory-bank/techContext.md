@@ -149,10 +149,16 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 - **New SSE event type**: `activity:card_moved` added to the existing `RealtimeEventType` union in `events.ts` (and `client/src/api/types.ts` in Phase 3), broadcast on the **existing** `/events` channel. Its `ActivityCardMovedEvent` envelope carries the full activity row and deliberately has **NO `originId`** — unlike `card:updated`, the originating tab MUST see its own activity entry (AC-HAPPY-2.2), so it is never echo-deduped.
 - **Recording hook**: the cards `PATCH` handler (`src/routes/cards.ts`) now does a pre-flight `findById` to capture `from_status`, and AFTER `res.json()` (fire-and-forget) records an `activity_events` row + emits `req.log.info({cardId,boardId,fromStatus,toStatus},'card moved')` + calls `notifyCardMoved` — but ONLY on a real status change (title/description/position-only edits record nothing). `notifyCardMoved` lives in `notify.ts` alongside the other notify helpers.
 
+**TASK-008 (FEAT-008) — realtime activity feed, frontend (Phase 3)**: the always-visible feed panel on the board view (UI/UX creative Option 4 — right sidebar on desktop, stacks below the kanban at ≤900px).
+- `client/src/components/ActivityFeed/` — read-only `<aside>` panel: `loading` → `Spinner`, `error` → compact `ErrorMessage` (non-fatal), empty → `EmptyState "No activity yet"`, else an `<ul role="list" aria-live="polite">` of newest-first entries (title / from → to / relative timestamp). New live entries get a one-shot `.newEntry` highlight (mirrors the `CardItem` `recentlyUpdated` pattern; `prefers-reduced-motion` honored). No new libraries (GP4).
+- `client/src/api/types.ts` — `ActivityEvent` interface + `activity:card_moved` added to `RealtimeEventType` + `ActivityRealtimeEvent` (no `originId`). `client/src/api/apiClient.ts` — `getActivity(boardId, signal)` → `GET .../activity`. `client/src/api/labels.ts` (`statusLabel`) + `client/src/api/formatRelative.ts` (dependency-free relative time).
+- `client/src/realtime/useRealtimeBoard.ts` — listens for `activity:card_moved` and routes it to a new optional `onActivityEvent` handler; activity events have no `originId` so the echo-drop never suppresses them (the mover sees its own entry — AC-HAPPY-2.2).
+- `client/src/pages/BoardViewPage.tsx` (+ `.module.css` `.boardLayout` grid) — fetches activity history in parallel with board/cards but handles it SEPARATELY (a feed-fetch failure is non-fatal; the board still renders); prepends live entries via `onActivityEvent` and drives the highlight via `newestEntryId` (cleared after 700ms).
+
 ## External Services
 
 [None this phase. PostgreSQL and OTLP collector are stubs — configurable but not connected.]
 
 ## Last Refreshed
 
-2026-06-30 (TASK-008 Phase 2 — activity recording + `GET /api/v1/boards/:boardId/activity` + `activity:card_moved` SSE event on the existing channel; backend complete, frontend is Phase 3)
+2026-06-30 (TASK-008 Phase 3 — frontend `ActivityFeed` panel on the board view, `getActivity` client + `onActivityEvent` SSE routing + parallel non-fatal feed fetch; backend Phases 1–2 + frontend Phase 3 complete, E2E is Phase 4 post-UAT)

@@ -26,6 +26,7 @@ import { Link, useParams } from 'react-router-dom';
 import {
   ApiError,
   createCard,
+  getActivity,
   getBoard,
   getCards,
   updateBoard,
@@ -35,8 +36,18 @@ import {
 import type { ApiErrorCategory } from '../api/apiClient';
 import { getClientId } from '../api/clientId';
 import { boardViewErrorCopy, dragRevertErrorCopy } from '../api/errorCopy';
-import type { Board, BoardRealtimeEvent, Card, CardRealtimeEvent, CardStatus } from '../api/types';
+import type {
+  ActivityEvent,
+  ActivityRealtimeEvent,
+  Board,
+  BoardRealtimeEvent,
+  Card,
+  CardRealtimeEvent,
+  CardStatus,
+} from '../api/types';
 import { useRealtimeBoard } from '../realtime/useRealtimeBoard';
+import { ActivityFeed } from '../components/ActivityFeed/ActivityFeed';
+import type { ActivityFeedLoadState } from '../components/ActivityFeed/ActivityFeed';
 import { BoardForm } from '../components/BoardForm/BoardForm';
 import type { BoardFormValues } from '../components/BoardForm/BoardForm';
 import { CardForm } from '../components/CardForm/CardForm';
@@ -69,6 +80,13 @@ export function BoardViewPage(): ReactNode {
   const [moveError, setMoveError] = useState(false);
   // Ids of cards just changed by a REMOTE collaborator — they briefly flash the highlight (Spec 7).
   const [highlightedCardIds, setHighlightedCardIds] = useState<ReadonlySet<number>>(() => new Set());
+  // ─── Activity feed (TASK-008 Phase 3) ──────────────────────────────────────
+  // The feed fetch is INDEPENDENT of the board/cards fetch: its failure is non-fatal (the board
+  // still renders), so it has its own load state rather than folding into the page `LoadState`.
+  const [activityEntries, setActivityEntries] = useState<readonly ActivityEvent[]>([]);
+  const [feedState, setFeedState] = useState<ActivityFeedLoadState>('loading');
+  // Id of the just-prepended live entry — drives the one-shot highlight, cleared after the animation.
+  const [newestEntryId, setNewestEntryId] = useState<number | null>(null);
 
   useEffect(() => {
     // Reset to loading whenever the id changes so navigating between boards re-fetches cleanly.
@@ -78,11 +96,14 @@ export function BoardViewPage(): ReactNode {
     setMovingCard(null);
     setMoveError(false);
     setHighlightedCardIds(new Set());
+    setActivityEntries([]);
+    setFeedState('loading');
+    setNewestEntryId(null);
     if (id === undefined) {
       return;
     }
     const controller = new AbortController();
-    // Fire both requests in parallel — no waterfall (NFR perf budget).
+    // Fire board + cards in parallel — no waterfall (NFR perf budget).
     Promise.all([getBoard(id, controller.signal), getCards(id, controller.signal)])
       .then(([board, cards]) => setState({ status: 'success', board, cards }))
       .catch((err: unknown) => {
@@ -91,6 +112,19 @@ export function BoardViewPage(): ReactNode {
         }
         const category: ApiErrorCategory = err instanceof ApiError ? err.category : 'server';
         setState({ status: 'error', category });
+      });
+    // Fetch activity history alongside (parallel, no waterfall) but handle it SEPARATELY: a feed
+    // failure is non-fatal and must not knock out the board (UI/UX creative § Error State).
+    getActivity(id, controller.signal)
+      .then((entries) => {
+        setActivityEntries(entries);
+        setFeedState('success');
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+          return; // cancelled on unmount / id change — not a real failure
+        }
+        setFeedState('error');
       });
     return () => controller.abort();
   }, [id]);
@@ -250,7 +284,25 @@ export function BoardViewPage(): ReactNode {
     setState((prev) => (prev.status === 'success' ? { ...prev, board: event.board } : prev));
   }
 
-  useRealtimeBoard(id, getClientId(), { onCardEvent: applyCardEvent, onBoardEvent: applyBoardEvent });
+  // Prepend a live activity entry (TASK-008). Activity events carry no `originId`, so this fires for
+  // EVERY move including this tab's own — the mover sees its own entry appear (AC-HAPPY-2.2). The new
+  // entry briefly highlights; the flag clears after the animation (mirrors highlightCard above).
+  function applyActivityEvent(event: ActivityRealtimeEvent): void {
+    const entry = event.activity;
+    setActivityEntries((prev) => [entry, ...prev]);
+    // A late-arriving event should still mark the feed populated even if the initial fetch errored.
+    setFeedState('success');
+    setNewestEntryId(entry.id);
+    window.setTimeout(() => {
+      setNewestEntryId((current) => (current === entry.id ? null : current));
+    }, 700);
+  }
+
+  useRealtimeBoard(id, getClientId(), {
+    onCardEvent: applyCardEvent,
+    onBoardEvent: applyBoardEvent,
+    onActivityEvent: applyActivityEvent,
+  });
 
   const board = state.status === 'success' ? state.board : null;
   const showInlineEdit = board !== null && editing;
@@ -306,6 +358,7 @@ export function BoardViewPage(): ReactNode {
         handleMoveCard,
         setMovingCard,
         highlightedCardIds,
+        { entries: activityEntries, loadState: feedState, newestEntryId },
       )}
       <Dialog open={editingCard !== null} title="Edit Card" onClose={() => setEditingCard(null)}>
         {editingCard !== null ? (
@@ -323,6 +376,12 @@ export function BoardViewPage(): ReactNode {
   );
 }
 
+interface FeedProps {
+  readonly entries: readonly ActivityEvent[];
+  readonly loadState: ActivityFeedLoadState;
+  readonly newestEntryId: number | null;
+}
+
 function renderBody(
   state: LoadState,
   onCreateCard: (status: CardStatus, values: CardFormValues) => Promise<void>,
@@ -330,6 +389,7 @@ function renderBody(
   onMoveCard: (card: Card, targetStatus: CardStatus) => void,
   onRequestMove: (card: Card) => void,
   highlightedCardIds: ReadonlySet<number>,
+  feed: FeedProps,
 ): ReactNode {
   if (state.status === 'loading') {
     return <Spinner />;
@@ -340,16 +400,24 @@ function renderBody(
     const copy = boardViewErrorCopy(state.category);
     return <ErrorMessage heading={copy.heading} message={copy.message} />;
   }
+  // Success: kanban + activity feed side by side (UI/UX creative Option 4 — `.boardLayout` grid).
   return (
-    <KanbanBoard
-      todoCards={cardsByStatus(state.cards, 'todo')}
-      inProgressCards={cardsByStatus(state.cards, 'in_progress')}
-      doneCards={cardsByStatus(state.cards, 'done')}
-      onCreateCard={onCreateCard}
-      onEditCard={onEditCard}
-      onMoveCard={onMoveCard}
-      onRequestMove={onRequestMove}
-      highlightedCardIds={highlightedCardIds}
-    />
+    <div className={styles.boardLayout}>
+      <KanbanBoard
+        todoCards={cardsByStatus(state.cards, 'todo')}
+        inProgressCards={cardsByStatus(state.cards, 'in_progress')}
+        doneCards={cardsByStatus(state.cards, 'done')}
+        onCreateCard={onCreateCard}
+        onEditCard={onEditCard}
+        onMoveCard={onMoveCard}
+        onRequestMove={onRequestMove}
+        highlightedCardIds={highlightedCardIds}
+      />
+      <ActivityFeed
+        entries={feed.entries}
+        loadState={feed.loadState}
+        newestEntryId={feed.newestEntryId}
+      />
+    </div>
   );
 }

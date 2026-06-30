@@ -1,0 +1,103 @@
+/* client/src/components/ActivityFeed/ActivityFeed.module.css — activity feed panel (TASK-008 Phase 3). */
+
+/*
+ * Panel container (<aside>). On desktop the parent `.boardLayout` grid in BoardViewPage gives this a
+ * fixed 260px column; on tablet/mobile it stacks full-width below the kanban (UI/UX creative Option 4).
+ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.heading {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+/*
+ * Scrollable region wrapping the list. `tabIndex={0}` (set in TSX) makes it keyboard-scrollable when
+ * the content overflows; the focus ring uses the shared token (UI/UX § Decision Area 5).
+ */
+.feedScroller {
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.feedScroller:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.list {
+  list-style: none;
+}
+
+/* Each entry: three stacked lines (title / move / timestamp). Separator on all but the first. */
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+}
+
+.entry + .entry {
+  border-top: 1px solid var(--color-border);
+}
+
+.entryTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+  /* Clamp very long titles to two lines so the narrow sidebar layout never breaks. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.entryMove,
+.entryTimestamp {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+/*
+ * New live-entry highlight (UI/UX § Decision Area 4): a one-shot background fade from a subtle blue
+ * tint back to the surface, mirroring the card highlight pattern (TASK-007 Spec 7). Reuses existing
+ * tokens — no new color values (Guiding Principle 4).
+ */
+.newEntry {
+  animation: feedEntryHighlight 600ms ease-out forwards;
+}
+
+@keyframes feedEntryHighlight {
+  0% {
+    background-color: var(--color-col-todo-bg);
+  }
+  100% {
+    background-color: var(--color-surface);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .newEntry {
+    animation: none;
+    background-color: var(--color-col-todo-bg);
+    transition: background-color 0s;
+  }
+}
+
+/* Stacked (tablet/mobile) layout: a shorter scroll region full-width below the kanban. */
+@media (max-width: 900px) {
+  .feedScroller {
+    max-height: 320px;
+  }
+}

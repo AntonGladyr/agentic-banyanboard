@@ -43,6 +43,29 @@ export interface Card {
   readonly updated_at: string;
 }
 
+/**
+ * An activity event as returned by `GET /api/v1/boards/:boardId/activity` and carried on the
+ * `activity:card_moved` SSE event (TASK-008 Phase 3). Mirrors the backend `ActivityEvent` row
+ * (`src/db/activity.ts`); `occurred_at` arrives as an ISO-8601 string (the backend `Date` is
+ * serialized by `res.json` / the SSE `data:` JSON), NOT a JS `Date`. `card_title` is a snapshot
+ * taken at move time so the feed stays readable after the card is renamed or deleted.
+ */
+export interface ActivityEvent {
+  readonly id: number;
+  readonly board_id: number;
+  readonly card_id: number;
+  /** Card title snapshot at the moment of the move (survives later rename/deletion). */
+  readonly card_title: string;
+  /** Source column status (`'todo' | 'in_progress' | 'done'` — typed loosely to match the row). */
+  readonly from_status: string;
+  /** Target column status. */
+  readonly to_status: string;
+  /** The fixed `'anonymous'` stub in v1 (TASK-008 § Actor Identity). */
+  readonly actor: string;
+  /** ISO-8601 timestamp string (server-assigned). */
+  readonly occurred_at: string;
+}
+
 // ─── Write-side input types (TASK-007 Phase 1) ────────────────────────────────
 //
 // These are the FRONTEND's write-side contract, mirroring the backend validators
@@ -98,7 +121,12 @@ export interface UpdateCardInput {
 // (the backend `Date`s are serialized by `res.json` / the SSE `data:` JSON).
 
 /** The set of mutations pushed to a board's subscribers. */
-export type RealtimeEventType = 'card:created' | 'card:updated' | 'card:deleted' | 'board:updated';
+export type RealtimeEventType =
+  | 'card:created'
+  | 'card:updated'
+  | 'card:deleted'
+  | 'board:updated'
+  | 'activity:card_moved'; // TASK-008 — a recorded card move (no originId; delivered to ALL tabs)
 
 interface RealtimeEventBase {
   readonly type: RealtimeEventType;
@@ -123,5 +151,16 @@ export interface BoardRealtimeEvent extends RealtimeEventBase {
   readonly board: Board;
 }
 
+/**
+ * A recorded card move (TASK-008) carrying the full persisted activity row. Deliberately has NO
+ * `originId` (mirrors `src/realtime/events.ts` `ActivityCardMovedEvent`): unlike `card:updated`,
+ * the originating tab MUST see its own activity entry appear in the feed (AC-HAPPY-2.2), so the
+ * echo-drop in `useRealtimeBoard` never suppresses it.
+ */
+export interface ActivityRealtimeEvent extends RealtimeEventBase {
+  readonly type: 'activity:card_moved';
+  readonly activity: ActivityEvent;
+}
+
 /** Any board-scoped real-time event (the parsed SSE `data:` payload). */
-export type RealtimeEvent = CardRealtimeEvent | BoardRealtimeEvent;
+export type RealtimeEvent = CardRealtimeEvent | BoardRealtimeEvent | ActivityRealtimeEvent;

@@ -74,3 +74,22 @@
 .moveError {
   margin-bottom: var(--space-4);
 }
+
+/*
+ * TASK-008 (UI/UX creative Option 4): two-column layout placing the kanban and the activity feed
+ * side by side on desktop. The kanban takes the flexible first column (`minmax(0, 1fr)` so it can
+ * shrink and let its own `overflow-x` scroller engage), the feed a fixed 260px sidebar. Below 900px
+ * the grid collapses to a single column so the feed stacks beneath the full-width kanban.
+ */
+.boardLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .boardLayout {
+    grid-template-columns: 1fr;
+  }
+}

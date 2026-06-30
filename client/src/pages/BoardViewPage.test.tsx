@@ -23,7 +23,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { BoardViewPage } from './BoardViewPage';
 import { ApiError } from '../api/apiClient';
 import * as apiClient from '../api/apiClient';
-import type { Board, Card } from '../api/types';
+import type { ActivityEvent, Board, Card } from '../api/types';
 
 // Mock the apiClient but keep the real ApiError class so `instanceof` / category mapping work.
 vi.mock('../api/apiClient', async (importOriginal) => {
@@ -32,6 +32,7 @@ vi.mock('../api/apiClient', async (importOriginal) => {
     ...actual,
     getBoard: vi.fn(),
     getCards: vi.fn(),
+    getActivity: vi.fn(),
     updateBoard: vi.fn(),
     createCard: vi.fn(),
     updateCard: vi.fn(),
@@ -41,10 +42,31 @@ vi.mock('../api/apiClient', async (importOriginal) => {
 
 const getBoardMock = vi.mocked(apiClient.getBoard);
 const getCardsMock = vi.mocked(apiClient.getCards);
+const getActivityMock = vi.mocked(apiClient.getActivity);
 const updateBoardMock = vi.mocked(apiClient.updateBoard);
 const createCardMock = vi.mocked(apiClient.createCard);
 const updateCardMock = vi.mocked(apiClient.updateCard);
 const updateCardStatusMock = vi.mocked(apiClient.updateCardStatus);
+
+/** Build an activity event row (TASK-008) — newest-first feed entry shape. */
+function activity(overrides: Partial<ActivityEvent> & Pick<ActivityEvent, 'id'>): ActivityEvent {
+  return {
+    board_id: 1,
+    card_id: 10,
+    card_title: 'Fix login bug',
+    from_status: 'todo',
+    to_status: 'in_progress',
+    actor: 'anonymous',
+    occurred_at: '2026-06-30T11:59:30.000Z',
+    ...overrides,
+  };
+}
+
+// The feed fetch fires on every mount; default it to an empty history so existing board/card tests
+// (which don't care about the feed) keep working. Individual TASK-008 tests override it.
+beforeEach(() => {
+  getActivityMock.mockResolvedValue([]);
+});
 
 /** Render the board view at `/boards/:id` so `useParams` resolves the id like the real router. */
 function renderPageAt(id: number | string): void {
@@ -92,6 +114,7 @@ describe('BoardViewPage', () => {
   it('shows the loading spinner while the board/cards requests are pending (AC-LOADING-1)', () => {
     getBoardMock.mockReturnValue(new Promise<Board>(() => {})); // never resolves → stays loading
     getCardsMock.mockReturnValue(new Promise<Card[]>(() => {}));
+    getActivityMock.mockReturnValue(new Promise<ActivityEvent[]>(() => {})); // hold the feed fetch too
     renderPageAt(1);
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
@@ -99,6 +122,7 @@ describe('BoardViewPage', () => {
   it('keeps the back-to-boards link present while loading (AC-HAPPY-2)', () => {
     getBoardMock.mockReturnValue(new Promise<Board>(() => {}));
     getCardsMock.mockReturnValue(new Promise<Card[]>(() => {}));
+    getActivityMock.mockReturnValue(new Promise<ActivityEvent[]>(() => {}));
     renderPageAt(1);
     expect(screen.getByRole('link', { name: /Back to boards/ })).toHaveAttribute('href', '/');
   });
@@ -525,5 +549,102 @@ describe('BoardViewPage — real-time updates', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Renamed by Jordan' }),
     ).toBeInTheDocument();
+  });
+});
+
+// ─── Activity feed integration (TASK-008 Phase 3) ────────────────────────────
+//
+// The page fetches activity history on mount (parallel with board/cards) and renders the always-
+// visible <ActivityFeed> alongside the kanban on success. A feed fetch failure is non-fatal. Live
+// `activity:card_moved` SSE events prepend a new entry at the top (incl. this tab's own — no
+// originId echo-drop, AC-HAPPY-2.2).
+
+describe('BoardViewPage — activity feed', () => {
+  beforeEach(() => {
+    FakeEventSource.instances = [];
+    vi.stubGlobal('EventSource', FakeEventSource as unknown as typeof EventSource);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('renders the Activity feed panel alongside the board on success (AC-ENTRY-1)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    getActivityMock.mockResolvedValue([]);
+    renderPageAt(1);
+
+    await screen.findByRole('heading', { level: 1, name: 'Alpha Project' });
+    expect(screen.getByRole('complementary', { name: 'Activity' })).toBeInTheDocument();
+  });
+
+  it('loads and displays the activity history newest-first on mount (AC-LOAD-1)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    getActivityMock.mockResolvedValue([
+      activity({ id: 2, card_title: 'Add API endpoints', from_status: 'in_progress', to_status: 'done' }),
+      activity({ id: 1, card_title: 'Fix login bug', from_status: 'todo', to_status: 'in_progress' }),
+    ]);
+    renderPageAt(1);
+
+    const feed = await screen.findByRole('complementary', { name: 'Activity' });
+    const items = within(feed).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]!).toHaveTextContent('Add API endpoints');
+    expect(items[1]!).toHaveTextContent('Fix login bug');
+    expect(getActivityMock).toHaveBeenCalledWith('1', expect.anything());
+  });
+
+  it('shows the feed empty state when the board has no activity (AC-EMPTY-1)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    getActivityMock.mockResolvedValue([]);
+    renderPageAt(1);
+
+    const feed = await screen.findByRole('complementary', { name: 'Activity' });
+    expect(within(feed).getByText('No activity yet')).toBeInTheDocument();
+  });
+
+  it('keeps the board usable and shows a feed error when the activity fetch fails (non-fatal)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    getActivityMock.mockRejectedValue(new ApiError('server', 'Request to /boards/1/activity failed'));
+    renderPageAt(1);
+
+    // The board still renders fully...
+    await screen.findByRole('heading', { level: 1, name: 'Alpha Project' });
+    expect(screen.getByRole('region', { name: 'To Do' })).toBeInTheDocument();
+    // ...and the feed surfaces its own non-fatal error.
+    const feed = screen.getByRole('complementary', { name: 'Activity' });
+    expect(await within(feed).findByText('Could not load activity')).toBeInTheDocument();
+  });
+
+  it('prepends a live activity:card_moved entry at the top of the feed (AC-HAPPY-2)', async () => {
+    getBoardMock.mockResolvedValue(board);
+    getCardsMock.mockResolvedValue([]);
+    getActivityMock.mockResolvedValue([
+      activity({ id: 1, card_title: 'Fix login bug', from_status: 'todo', to_status: 'in_progress' }),
+    ]);
+    renderPageAt(1);
+
+    const feed = await screen.findByRole('complementary', { name: 'Activity' });
+    expect(within(feed).getAllByRole('listitem')).toHaveLength(1);
+
+    const source = FakeEventSource.instances.at(-1)!;
+    act(() =>
+      source.emit('activity:card_moved', {
+        type: 'activity:card_moved',
+        boardId: 1,
+        emittedAt: '2026-06-30T12:00:00.000Z',
+        activity: activity({ id: 9, card_title: 'Update docs', from_status: 'in_progress', to_status: 'done' }),
+      }),
+    );
+
+    const items = within(feed).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    // New entry is prepended at the top.
+    expect(items[0]!).toHaveTextContent('Update docs');
+    expect(items[1]!).toHaveTextContent('Fix login bug');
   });
 });

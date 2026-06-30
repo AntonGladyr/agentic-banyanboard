@@ -22,6 +22,7 @@ import {
   ApiError,
   createBoard,
   createCard,
+  getActivity,
   getBoard,
   getBoards,
   getCards,
@@ -29,7 +30,7 @@ import {
   updateCard,
   updateCardStatus,
 } from './apiClient';
-import type { Board, Card } from './types';
+import type { ActivityEvent, Board, Card } from './types';
 import type { CreateBoardInput, CreateCardInput, UpdateBoardInput, UpdateCardInput } from './types';
 
 function mockFetchResolves(status: number, body: unknown): void {
@@ -107,6 +108,35 @@ describe('apiClient — success paths', () => {
 
     await expect(getCards(1)).resolves.toEqual(cards);
     expect(fetch).toHaveBeenCalledWith('/api/v1/boards/1/cards', expect.any(Object));
+  });
+
+  it('getActivity maps the JSON array of activity events from the board-scoped path (TASK-008)', async () => {
+    const events: ActivityEvent[] = [
+      {
+        id: 5,
+        board_id: 1,
+        card_id: 10,
+        card_title: 'Fix login bug',
+        from_status: 'todo',
+        to_status: 'in_progress',
+        actor: 'anonymous',
+        occurred_at: '2026-06-30T11:59:30.000Z',
+      },
+    ];
+    mockFetchResolves(200, events);
+
+    await expect(getActivity(1)).resolves.toEqual(events);
+    expect(fetch).toHaveBeenCalledWith('/api/v1/boards/1/activity', expect.any(Object));
+  });
+});
+
+describe('getActivity — failure mapping', () => {
+  it('maps a 404 (board not found) to ApiError category "notFound" (AC-ERROR-1)', async () => {
+    mockFetchResolves(404, { error: 'Not Found', path: '/api/v1/boards/999/activity' });
+
+    const error = (await getActivity(999).catch((e: unknown) => e)) as ApiError;
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.category).toBe('notFound');
   });
 });
 

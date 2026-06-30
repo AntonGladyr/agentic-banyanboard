@@ -18,6 +18,7 @@
 
 import { useEffect, useRef } from 'react';
 import type {
+  ActivityRealtimeEvent,
   BoardRealtimeEvent,
   CardRealtimeEvent,
   RealtimeEvent,
@@ -30,6 +31,7 @@ const REALTIME_EVENT_TYPES: readonly RealtimeEventType[] = [
   'card:updated',
   'card:deleted',
   'board:updated',
+  'activity:card_moved',
 ];
 
 /** Page-supplied handlers the hook routes de-duplicated remote events to. */
@@ -38,6 +40,12 @@ export interface RealtimeHandlers {
   readonly onCardEvent: (event: CardRealtimeEvent) => void;
   /** A remote board update arrived — apply the full board to local state. */
   readonly onBoardEvent: (event: BoardRealtimeEvent) => void;
+  /**
+   * A card move was recorded (TASK-008) — prepend the activity entry to the feed. Activity events
+   * carry NO `originId`, so the echo-drop below never suppresses them: the originating tab sees its
+   * own move appear in the feed (AC-HAPPY-2.2). Optional so existing callers stay source-compatible.
+   */
+  readonly onActivityEvent?: (event: ActivityRealtimeEvent) => void;
 }
 
 /**
@@ -69,11 +77,14 @@ export function useRealtimeBoard(
       } catch {
         return; // ignore a malformed frame rather than crash the stream
       }
-      // Drop this tab's own echo — it already applied the change optimistically (R5).
+      // Drop this tab's own echo — it already applied the change optimistically (R5). Activity
+      // events carry no `originId`, so this guard never matches them (AC-HAPPY-2.2 — by design).
       if (event.originId !== undefined && event.originId === originId) {
         return;
       }
-      if (event.type === 'board:updated') {
+      if (event.type === 'activity:card_moved') {
+        handlersRef.current.onActivityEvent?.(event);
+      } else if (event.type === 'board:updated') {
         handlersRef.current.onBoardEvent(event);
       } else {
         handlersRef.current.onCardEvent(event);

@@ -16,7 +16,15 @@
  * callers can ignore them rather than render a spurious error state.
  */
 
-import type { Board, Card, CreateBoardInput, CreateCardInput, UpdateBoardInput, UpdateCardInput } from './types';
+import type {
+  ActivityEvent,
+  Board,
+  Card,
+  CreateBoardInput,
+  CreateCardInput,
+  UpdateBoardInput,
+  UpdateCardInput,
+} from './types';
 import type { CardStatus } from './types';
 
 /**
@@ -97,6 +105,18 @@ export function getBoard(id: number | string, signal?: AbortSignal): Promise<Boa
 /** GET /api/v1/boards/:boardId/cards — list a board's cards (empty array when none exist). */
 export function getCards(boardId: number | string, signal?: AbortSignal): Promise<Card[]> {
   return getJson<Card[]>(`/boards/${boardId}/cards`, signal);
+}
+
+/**
+ * GET /api/v1/boards/:boardId/activity — list a board's activity events, newest first (TASK-008
+ * Phase 3). Returns an empty array when the board has no recorded moves; surfaces a `notFound`
+ * {@link ApiError} when the board id does not exist (AC-ERROR-1).
+ */
+export function getActivity(
+  boardId: number | string,
+  signal?: AbortSignal,
+): Promise<ActivityEvent[]> {
+  return getJson<ActivityEvent[]>(`/boards/${boardId}/activity`, signal);
 }
 
 // ─── Write helpers (TASK-007 Phase 1) ─────────────────────────────────────────
