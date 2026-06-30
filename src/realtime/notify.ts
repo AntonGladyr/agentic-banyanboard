@@ -16,9 +16,10 @@
 import type { Request } from 'express';
 import type { Card } from '../db/cards';
 import type { Board } from '../db/boards';
+import type { ActivityEvent } from '../db/activity';
 import { config } from '../config/env';
 import { publish } from './broadcaster';
-import type { BoardEvent, CardEvent, RealtimeEvent } from './events';
+import type { ActivityCardMovedEvent, BoardEvent, CardEvent, RealtimeEvent } from './events';
 
 /** Publish an event for `boardId`, guarded so it never throws into the request path (logs via req.log). */
 function publishSafely(boardId: number, event: RealtimeEvent, req: Request): void {
@@ -61,6 +62,25 @@ export function notifyBoardChange(boardId: number, board: Board, req: Request): 
     originId: req.get('X-Client-Id') ?? undefined,
     emittedAt: new Date().toISOString(),
     traceId: req.traceId,
+  };
+  publishSafely(boardId, event, req);
+}
+
+/**
+ * Broadcast a recorded card move (TASK-008) to the board's channel. Unlike {@link notifyCardChange},
+ * the envelope carries NO `originId` — the originating tab MUST see its own activity entry appear in
+ * the feed (AC-HAPPY-2.2), so it is delivered to every subscriber including the mover. Same
+ * fire-and-forget, gated, defensive posture as the other notify helpers (callers invoke it after
+ * `res.json()`, so a broadcast failure can never fail the card PATCH it rides on).
+ */
+export function notifyCardMoved(boardId: number, activity: ActivityEvent, req: Request): void {
+  const event: ActivityCardMovedEvent = {
+    type: 'activity:card_moved',
+    boardId,
+    activity,
+    emittedAt: new Date().toISOString(),
+    traceId: req.traceId,
+    // NO originId — never echo-deduped (AC-HAPPY-2.2).
   };
   publishSafely(boardId, event, req);
 }

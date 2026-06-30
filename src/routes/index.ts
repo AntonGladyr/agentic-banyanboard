@@ -17,6 +17,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { boardsRouter } from './boards';
 import { cardsRouter } from './cards';
+import { activityRouter } from './activity';
 import { eventsRouter } from '../realtime/eventsRouter';
 
 const apiRouter = Router();
@@ -32,6 +33,10 @@ apiRouter.use('/boards', boardsRouter);
 // Cards CRUD domain (TASK-005) — five board-scoped endpoints under /api/v1/boards/:boardId/cards.
 // The cards router uses { mergeParams: true } so it can read :boardId from this mount path.
 apiRouter.use('/boards/:boardId/cards', cardsRouter);
+
+// Activity feed read domain (TASK-008) — GET /api/v1/boards/:boardId/activity. Distinct path segment
+// from /cards and /events (no conflict); also { mergeParams: true } for :boardId.
+apiRouter.use('/boards/:boardId/activity', activityRouter);
 
 // Real-time SSE transport (TASK-007 Phase 5) — GET /api/v1/boards/:boardId/events. Mounted AFTER the
 // cards router (distinct path segment, no conflict) and inside this composition root so it preserves

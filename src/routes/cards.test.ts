@@ -54,12 +54,26 @@ interface FakeBoard {
   updated_at: Date;
 }
 
+/** An activity-event row — recorded by the PATCH handler on a status change (TASK-008 Phase 2). */
+interface FakeActivityEvent {
+  id: number;
+  board_id: number;
+  card_id: number;
+  card_title: string;
+  from_status: string;
+  to_status: string;
+  actor: string;
+  occurred_at: Date;
+}
+
 /** In-memory tables backing the mocked pool. Reset before every test. */
 const store: {
   boards: FakeBoard[];
   cards: FakeCard[];
+  activity: FakeActivityEvent[];
   nextCardId: number;
-} = { boards: [], cards: [], nextCardId: 1 };
+  nextActivityId: number;
+} = { boards: [], cards: [], activity: [], nextCardId: 1, nextActivityId: 1 };
 
 /** Seed a board so the pre-flight existence check and board-scoped paths have a parent to find. */
 function seedBoard(id: number): void {
@@ -104,11 +118,13 @@ const mockQuery = jest.fn(
       return { rows, rowCount: rows.length };
     }
 
-    // Read one card: ... FROM cards WHERE id = $1.
+    // Read one card: ... FROM cards WHERE id = $1. Return a COPY — pg yields a fresh row object per
+    // query, so a pre-flight read (findById) is a true snapshot, not an alias of the row a later UPDATE
+    // mutates in place. (Aliasing would make the cards PATCH handler's before/after status compare equal.)
     if (text.startsWith('SELECT') && /FROM cards/.test(text) && /WHERE id = \$1/.test(text)) {
       const id = params[0] as number;
       const found = store.cards.find((c) => c.id === id);
-      return { rows: found ? [found] : [], rowCount: found ? 1 : 0 };
+      return { rows: found ? [{ ...found }] : [], rowCount: found ? 1 : 0 };
     }
 
     // Pre-flight board existence: ... FROM boards WHERE id = $1.
@@ -155,6 +171,23 @@ const mockQuery = jest.fn(
       return { rows: [], rowCount: 1 };
     }
 
+    // Activity recording (TASK-008 Phase 2): the PATCH handler inserts here on a status change.
+    // Honors COALESCE($6, 'anonymous') for the actor default.
+    if (text.startsWith('INSERT INTO activity_events')) {
+      const row: FakeActivityEvent = {
+        id: store.nextActivityId++,
+        board_id: params[0] as number,
+        card_id: params[1] as number,
+        card_title: params[2] as string,
+        from_status: params[3] as string,
+        to_status: params[4] as string,
+        actor: (params[5] ?? 'anonymous') as string,
+        occurred_at: new Date(),
+      };
+      store.activity.push(row);
+      return { rows: [row], rowCount: 1 };
+    }
+
     throw new Error(`fake pool received an unexpected query: ${text}`);
   },
 );
@@ -173,7 +206,9 @@ describe('cards slice (integration, mocked pool seam)', () => {
   beforeEach(() => {
     store.boards = [];
     store.cards = [];
+    store.activity = [];
     store.nextCardId = 1;
+    store.nextActivityId = 1;
     mockQuery.mockClear();
     // Two boards exist for the happy-path / isolation ACs.
     seedBoard(1);
@@ -549,5 +584,140 @@ describe('cards slice (integration, mocked pool seam)', () => {
       traceId: expect.any(String),
     });
     expect(JSON.stringify(res.body)).not.toContain(secret);
+  });
+
+  // ── TASK-008 Phase 2: activity recording on the cards PATCH path ────────────────────────────
+  describe('activity recording (TASK-008 Phase 2)', () => {
+    // Recording runs AFTER res.json() and awaits the insert (fire-and-forget — a failure can never
+    // corrupt the already-sent 200). So by the time supertest resolves the response, that post-response
+    // microtask may not have settled. Flush the event loop once before asserting on the recorded side effect.
+    const flushAsync = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
+    /** Create a card on board 1 with the given status and return its id. */
+    async function createCard(status: string): Promise<number> {
+      const created = await request(app)
+        .post('/api/v1/boards/1/cards')
+        .send({ title: 'Recordable card', status });
+      expect(created.status).toBe(201);
+      return created.body.id as number;
+    }
+
+    // ── AC-HAPPY-1 (DB half): a status-changing PATCH records exactly one activity_events row ──
+    it('AC-HAPPY-1: PATCH that changes status records an activity event with from/to + title snapshot', async () => {
+      const id = await createCard('todo');
+
+      const patched = await request(app)
+        .patch(`/api/v1/boards/1/cards/${id}`)
+        .send({ status: 'in_progress' });
+      await flushAsync();
+
+      expect(patched.status).toBe(200);
+      expect(patched.body.status).toBe('in_progress');
+
+      // Exactly one row recorded, with the move details and the title snapshot at move time.
+      expect(store.activity).toHaveLength(1);
+      const row = store.activity[0]!;
+      expect(row.board_id).toBe(1);
+      expect(row.card_id).toBe(id);
+      expect(row.card_title).toBe('Recordable card');
+      expect(row.from_status).toBe('todo');
+      expect(row.to_status).toBe('in_progress');
+      expect(row.actor).toBe('anonymous'); // v1 anonymous stub (TASK-008 § Actor Identity)
+    });
+
+    it('AC-HAPPY-1: a status change records AFTER the response without altering the PATCH body', async () => {
+      const id = await createCard('todo');
+
+      const patched = await request(app)
+        .patch(`/api/v1/boards/1/cards/${id}`)
+        .send({ status: 'done', title: 'Renamed during move' });
+      await flushAsync();
+
+      // Existing PATCH behavior is unchanged: the response is the full updated card.
+      expect(patched.status).toBe(200);
+      expect(patched.body.title).toBe('Renamed during move');
+      expect(patched.body.status).toBe('done');
+      // The recorded snapshot uses the post-update title (the move's card_title), from 'todo' → 'done'.
+      expect(store.activity).toHaveLength(1);
+      expect(store.activity[0]!.from_status).toBe('todo');
+      expect(store.activity[0]!.to_status).toBe('done');
+      expect(store.activity[0]!.card_title).toBe('Renamed during move');
+    });
+
+    // ── AC-ACTIVITY-ONLY-MOVES-1: non-status edits record nothing ───────────────────────────
+    it('AC-ACTIVITY-ONLY-MOVES-1: a title-only PATCH records NO activity event', async () => {
+      const id = await createCard('todo');
+
+      const patched = await request(app)
+        .patch(`/api/v1/boards/1/cards/${id}`)
+        .send({ title: 'Just a rename' });
+      await flushAsync();
+
+      expect(patched.status).toBe(200);
+      expect(store.activity).toHaveLength(0);
+    });
+
+    it('AC-ACTIVITY-ONLY-MOVES-1: a description/position-only PATCH records NO activity event', async () => {
+      const id = await createCard('todo');
+
+      const patched = await request(app)
+        .patch(`/api/v1/boards/1/cards/${id}`)
+        .send({ description: 'note', position: 3 });
+      await flushAsync();
+
+      expect(patched.status).toBe(200);
+      expect(store.activity).toHaveLength(0);
+    });
+
+    it('AC-ACTIVITY-ONLY-MOVES-1: PATCH status to the SAME value records NO activity event (no real move)', async () => {
+      const id = await createCard('in_progress');
+
+      const patched = await request(app)
+        .patch(`/api/v1/boards/1/cards/${id}`)
+        .send({ status: 'in_progress' });
+      await flushAsync();
+
+      expect(patched.status).toBe(200);
+      expect(store.activity).toHaveLength(0);
+    });
+
+    // ── AC-OBS-1: the move emits a structured pino line with the move fields ─────────────────
+    it('AC-OBS-1: a recorded move emits a "card moved" log line with cardId, boardId, fromStatus, toStatus', async () => {
+      const id = await createCard('todo');
+
+      // pino writes JSON through process.stdout.write (logger.ts capture contract). Spy + parse.
+      const lines: string[] = [];
+      const writeSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation((chunk: unknown): boolean => {
+          lines.push(String(chunk));
+          return true;
+        });
+
+      try {
+        await request(app).patch(`/api/v1/boards/1/cards/${id}`).send({ status: 'done' });
+        await flushAsync(); // let the post-response recording (which emits the log line) settle
+      } finally {
+        writeSpy.mockRestore();
+      }
+
+      const moved = lines
+        .map((l) => {
+          try {
+            return JSON.parse(l) as Record<string, unknown>;
+          } catch {
+            return null;
+          }
+        })
+        .find((o) => o !== null && o.msg === 'card moved');
+
+      expect(moved).toBeDefined();
+      expect(moved).toMatchObject({
+        cardId: id,
+        boardId: 1,
+        fromStatus: 'todo',
+        toStatus: 'done',
+      });
+    });
   });
 });

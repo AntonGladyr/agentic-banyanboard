@@ -12,13 +12,15 @@
 
 import type { Card } from '../db/cards';
 import type { Board } from '../db/boards';
+import type { ActivityEvent } from '../db/activity';
 
 /** The set of mutations broadcast to a board's subscribers. */
 export type RealtimeEventType =
   | 'card:created'
   | 'card:updated' // covers card edit AND drag-and-drop status change
   | 'card:deleted' // emitted by the DELETE path for multi-tab correctness (UI delete is out of scope)
-  | 'board:updated';
+  | 'board:updated'
+  | 'activity:card_moved'; // TASK-008 — a recorded card move, delivered to ALL tabs (no echo de-dup)
 
 interface RealtimeEventBase {
   readonly type: RealtimeEventType;
@@ -48,5 +50,19 @@ export interface BoardEvent extends RealtimeEventBase {
   readonly board: Board;
 }
 
+/**
+ * A recorded card move (TASK-008). Carries the full persisted activity row. Deliberately has NO
+ * `originId`: unlike `card:updated` (which the originating tab echo-drops because it already applied
+ * its optimistic move), the originating tab MUST see its own activity entry appear in the feed
+ * (AC-HAPPY-2.2). Designing the absence of `originId` into the envelope makes "never echo-deduped" a
+ * structural property — the de-dup guard in `useRealtimeBoard` is never satisfied for it — rather
+ * than a fragile type-specific exception (Architecture creative Q3 / Option 3A).
+ */
+export interface ActivityCardMovedEvent extends RealtimeEventBase {
+  readonly type: 'activity:card_moved';
+  readonly activity: ActivityEvent;
+  // originId intentionally never set — never echo-deduped (delivered to every tab, incl. the mover).
+}
+
 /** Any board-scoped real-time event (the SSE `data:` payload, JSON-serialized). */
-export type RealtimeEvent = CardEvent | BoardEvent;
+export type RealtimeEvent = CardEvent | BoardEvent | ActivityCardMovedEvent;

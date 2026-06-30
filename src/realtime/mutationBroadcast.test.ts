@@ -39,10 +39,29 @@ interface FakeBoard {
   updated_at: Date;
 }
 
-const store: { boards: FakeBoard[]; cards: FakeCard[]; nextCardId: number } = {
+interface FakeActivity {
+  id: number;
+  board_id: number;
+  card_id: number;
+  card_title: string;
+  from_status: string;
+  to_status: string;
+  actor: string;
+  occurred_at: Date;
+}
+
+const store: {
+  boards: FakeBoard[];
+  cards: FakeCard[];
+  activity: FakeActivity[];
+  nextCardId: number;
+  nextActivityId: number;
+} = {
   boards: [],
   cards: [],
+  activity: [],
   nextCardId: 1,
+  nextActivityId: 1,
 };
 
 function seedBoard(id: number): void {
@@ -71,6 +90,28 @@ const mockQuery = jest.fn(
     if (text.startsWith('SELECT') && text.includes('FROM boards WHERE id')) {
       const row = store.boards.find((b) => b.id === (params[0] as number)) ?? null;
       return { rows: row ? [row] : [], rowCount: row ? 1 : 0 };
+    }
+    // Pre-flight findById on the cards PATCH path (TASK-008) — capture the pre-update status. Return a
+    // COPY (pg yields a fresh row per query) so this snapshot is not an alias of the row the later
+    // UPDATE mutates in place; otherwise before/after status would compare equal and skip recording.
+    if (text.startsWith('SELECT') && text.includes('FROM cards WHERE id')) {
+      const row = store.cards.find((c) => c.id === (params[0] as number)) ?? null;
+      return { rows: row ? [{ ...row }] : [], rowCount: row ? 1 : 0 };
+    }
+    // Activity recording on a status change (TASK-008) — return the created row so notifyCardMoved fires.
+    if (text.startsWith('INSERT INTO activity_events')) {
+      const row: FakeActivity = {
+        id: store.nextActivityId++,
+        board_id: params[0] as number,
+        card_id: params[1] as number,
+        card_title: params[2] as string,
+        from_status: params[3] as string,
+        to_status: params[4] as string,
+        actor: (params[5] ?? 'anonymous') as string,
+        occurred_at: new Date(),
+      };
+      store.activity.push(row);
+      return { rows: [row], rowCount: 1 };
     }
     if (text.startsWith('INSERT INTO cards')) {
       const now = new Date();
@@ -129,10 +170,18 @@ function fakeSubscriber(): Subscriber & { readonly received: RealtimeEvent[] } {
   return { received, send: (event) => received.push(event) };
 }
 
+/**
+ * The activity broadcast (TASK-008) fires AFTER res.json() and after an awaited insert, so it has not
+ * settled when supertest resolves the response. Flush the event loop once before asserting on it.
+ */
+const flushAsync = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
 beforeEach(() => {
   store.boards = [];
   store.cards = [];
+  store.activity = [];
   store.nextCardId = 1;
+  store.nextActivityId = 1;
   mockQuery.mockClear();
   clear();
 });
@@ -169,10 +218,71 @@ describe('mutation → broadcast hooks', () => {
       .send({ status: 'in_progress' });
 
     expect(res.status).toBe(200);
-    expect(sub.received).toHaveLength(1);
-    expect(sub.received[0]?.type).toBe('card:updated');
-    const event = sub.received[0];
-    expect(event?.type === 'card:updated' ? event.card.status : null).toBe('in_progress');
+    // A status change emits BOTH card:updated and (TASK-008) activity:card_moved — assert the
+    // card:updated event specifically rather than the total count.
+    const updated = sub.received.find((e) => e.type === 'card:updated');
+    expect(updated).toBeDefined();
+    expect(updated?.originId).toBe('tab-xyz');
+    expect(updated?.type === 'card:updated' ? updated.card.status : null).toBe('in_progress');
+  });
+
+  // ── TASK-008 Phase 2: activity:card_moved broadcast (AC-HAPPY-2 backend half, AC-HAPPY-2.2) ──
+  it('PATCH that changes status publishes activity:card_moved carrying the full activity row', async () => {
+    seedBoard(1);
+    seedCard(10, 1); // seeded status 'todo'
+    const sub = fakeSubscriber();
+    subscribe(1, sub);
+
+    const res = await request(createApp())
+      .patch('/api/v1/boards/1/cards/10')
+      .set('X-Client-Id', 'tab-mover')
+      .send({ status: 'in_progress' });
+    await flushAsync();
+
+    expect(res.status).toBe(200);
+    const activity = sub.received.find((e) => e.type === 'activity:card_moved');
+    expect(activity).toBeDefined();
+    expect(activity?.boardId).toBe(1);
+    if (activity?.type === 'activity:card_moved') {
+      expect(activity.activity.card_id).toBe(10);
+      expect(activity.activity.from_status).toBe('todo');
+      expect(activity.activity.to_status).toBe('in_progress');
+      expect(activity.activity.actor).toBe('anonymous');
+    }
+  });
+
+  it('activity:card_moved carries NO originId so the originating tab is NOT echo-deduped (AC-HAPPY-2.2)', async () => {
+    seedBoard(1);
+    seedCard(10, 1);
+    const sub = fakeSubscriber();
+    subscribe(1, sub);
+
+    await request(createApp())
+      .patch('/api/v1/boards/1/cards/10')
+      .set('X-Client-Id', 'tab-mover')
+      .send({ status: 'done' });
+    await flushAsync();
+
+    const activity = sub.received.find((e) => e.type === 'activity:card_moved');
+    expect(activity).toBeDefined();
+    // The card:updated event DOES carry the originId; the activity event deliberately does not.
+    expect(activity?.originId).toBeUndefined();
+  });
+
+  it('a non-status PATCH (title only) publishes card:updated but NO activity:card_moved', async () => {
+    seedBoard(1);
+    seedCard(10, 1);
+    const sub = fakeSubscriber();
+    subscribe(1, sub);
+
+    const res = await request(createApp())
+      .patch('/api/v1/boards/1/cards/10')
+      .send({ title: 'Renamed, not moved' });
+    await flushAsync();
+
+    expect(res.status).toBe(200);
+    expect(sub.received.some((e) => e.type === 'card:updated')).toBe(true);
+    expect(sub.received.some((e) => e.type === 'activity:card_moved')).toBe(false);
   });
 
   it('PATCH board publishes board:updated', async () => {

@@ -143,10 +143,16 @@ All env vars are read and validated exclusively in `src/config/env.ts`; invalid 
 - **Echo de-dup origin token (two channels, by design)**: writes send the per-tab id as the `X-Client-Id` *header* → echoed into the event `originId`; the SSE GET carries it as the `?clientId=` *query param* (EventSource cannot set headers) for connection logs only. The frontend `useRealtimeBoard` drops events whose `originId` equals its own tab id so an optimistic change is never double-applied (Decision 3 / R5). The token is opaque, not auth (no auth in MVP).
 - **Frontend**: `client/src/realtime/useRealtimeBoard.ts` (native `EventSource`, auto-reconnect, de-dup) wired in `BoardViewPage`; remote changes apply full-entity into state and flash a CSS `recentlyUpdated` highlight on `CardItem` (600ms, `prefers-reduced-motion` honored — UI/UX Spec 7).]
 
+**TASK-008 (FEAT-008) — realtime activity feed, backend (Phases 1–2)**: a board-scoped feed of card-move events, riding the TASK-007 SSE transport (no new infrastructure).
+- `src/db/activity.ts` + `migrations/<ts>_create-activity-events-table.js` (Phase 1) — `activity_events` table (`board_id` FK ON DELETE CASCADE, `card_id` with NO FK, `card_title` snapshot, `from_status`/`to_status`, `actor varchar(255) NOT NULL DEFAULT 'anonymous'`, `occurred_at timestamptz`) + index `(board_id, occurred_at DESC, id DESC)`. DAL `insert`/`listByBoard`; the read is bounded by `LIMIT 200` (retention decision 4A — bound the read, not the store), the store is never pruned in v1.
+- **New REST endpoint**: `GET /api/v1/boards/:boardId/activity` (`src/routes/activity.ts`, mounted in `routes/index.ts` after `/cards`) — returns the board's events `occurred_at DESC, id DESC` (newest-first) as a JSON array; `validateId`→400, pre-flight `findBoardById`→404. p95 < 150 ms via the index + LIMIT.
+- **New SSE event type**: `activity:card_moved` added to the existing `RealtimeEventType` union in `events.ts` (and `client/src/api/types.ts` in Phase 3), broadcast on the **existing** `/events` channel. Its `ActivityCardMovedEvent` envelope carries the full activity row and deliberately has **NO `originId`** — unlike `card:updated`, the originating tab MUST see its own activity entry (AC-HAPPY-2.2), so it is never echo-deduped.
+- **Recording hook**: the cards `PATCH` handler (`src/routes/cards.ts`) now does a pre-flight `findById` to capture `from_status`, and AFTER `res.json()` (fire-and-forget) records an `activity_events` row + emits `req.log.info({cardId,boardId,fromStatus,toStatus},'card moved')` + calls `notifyCardMoved` — but ONLY on a real status change (title/description/position-only edits record nothing). `notifyCardMoved` lives in `notify.ts` alongside the other notify helpers.
+
 ## External Services
 
 [None this phase. PostgreSQL and OTLP collector are stubs — configurable but not connected.]
 
 ## Last Refreshed
 
-2026-06-21 (TASK-007 Phase 6 — E2E harness: `realtime` Playwright project + real-DB `scripts/e2e-db-setup.mjs` + `E2E_*` harness env, for the two-tab SSE journeys; BUILD_COMPLETE)
+2026-06-30 (TASK-008 Phase 2 — activity recording + `GET /api/v1/boards/:boardId/activity` + `activity:card_moved` SSE event on the existing channel; backend complete, frontend is Phase 3)

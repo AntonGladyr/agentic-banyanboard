@@ -319,7 +319,7 @@ testable and committed.
 ## Implementation Roadmap
 
 - [x] **Phase 1 — Activity persistence layer**: migration `create-activity-events-table.js` (columns per Specification §Data persisted; `actor varchar(255) NOT NULL DEFAULT 'anonymous'`; index on `(board_id, occurred_at DESC)`), `src/db/activity.ts` DAL (`ActivityEvent`, `insert`, `listByBoard`), `src/db/activity.test.ts`. ✅ COMPLETE (2026-06-30) — 9 DAL tests pass, full suite 159/159 green, tsc clean.
-- [ ] **Phase 2 — Recording, REST endpoint & SSE broadcast**: capture `from_status` in the cards PATCH handler (mechanism per Architecture creative), insert activity row on status change, add `activity:card_moved` to `events.ts` + `notifyCardMoved` in `notify.ts`, new `src/routes/activity.ts` mounted in `routes/index.ts`, tests (`activity.test.ts` route + extend `cards.test.ts`).
+- [x] **Phase 2 — Recording, REST endpoint & SSE broadcast**: capture `from_status` in the cards PATCH handler (mechanism per Architecture creative), insert activity row on status change, add `activity:card_moved` to `events.ts` + `notifyCardMoved` in `notify.ts`, new `src/routes/activity.ts` mounted in `routes/index.ts`, tests (`activity.test.ts` route + extend `cards.test.ts`). ✅ COMPLETE (2026-06-30) — 15 new tests (cards.test.ts +6, mutationBroadcast.test.ts +3, activity.test.ts +6); full suite 174/174 green; tsc clean.
 - [ ] **Phase 3 — Frontend ActivityFeed & integration**: `ActivityEvent`/`activity:card_moved` in `client/src/api/types.ts`, `getActivity` in `apiClient.ts`, `onActivityEvent` in `useRealtimeBoard.ts`, new `ActivityFeed` component (loading/empty/list per UI/UX creative), wire into `BoardViewPage.tsx` layout, tests.
 - [ ] **UAT** (`/banyan-uat`) — walk the user journey produced by the UI/UX creative; emit findings; on PASS generate the E2E spec.
 - [ ] **Phase 4 — E2E implementation** (post-UAT): implement the generated E2E spec (entry-to-success: open board → move card → new feed entry appears at top with title + from→to + timestamp).
@@ -335,35 +335,39 @@ testable and committed.
 
 ## Build Execution State
 
-**Build Status**: COMPLETE (Phase 1)
-**Current Build**: Phase 1: Activity persistence layer (TASK-008) — COMPLETE
+**Build Status**: COMPLETE (Phase 2)
+**Current Build**: Phase 2: Recording, REST endpoint & SSE broadcast (TASK-008) — COMPLETE
 **Build Started**: 2026-06-30
-**Phase Number**: 1 of 4 (3 build phases + E2E)
+**Phase Number**: 2 of 4 (3 build phases + E2E)
 **Is Multi-Phase**: YES
 
 ### Current Build Step
 **Step**: Step 11 - Phase Git Completion
 **Status**: COMPLETE
 **Completed**: 2026-06-30
-**Output**: Phase 1 committed to feature/FEAT-008-realtime-activity-feed
+**Output**: Phase 2 committed to feature/FEAT-008-realtime-activity-feed
 
-### Completed Steps
-- Step 0.5 Git Setup: COMPLETE (2026-06-30) - Branch feature/FEAT-008-realtime-activity-feed created (local-merge, no worktree per project pattern)
-- Step 0.6 Phase Gate: COMPLETE (2026-06-30) - Roadmap populated, creative phases complete
-- Step 1 Read Task Context: COMPLETE (2026-06-30) - Phase 1 (persistence) identified, Level 3
-- Step 2 Load Context: COMPLETE (2026-06-30) - Architecture + UI/UX creative loaded
-- Step 3 Test Writer: COMPLETE (2026-06-30) - src/db/activity.test.ts (9 tests)
-- Step 4 Coding Agent: COMPLETE (2026-06-30) - migration + src/db/activity.ts DAL
-- Step 6/7 Verification: COMPLETE (2026-06-30) - 9/9 DAL tests pass; full suite 159/159; tsc clean; migration node --check OK
-- Step 10 Memory Bank: COMPLETE (2026-06-30) - roadmap Phase 1 checked, registry + progress updated
+### Completed Steps (Phase 2)
+- Step 0.5 Git Setup: COMPLETE (2026-06-30) - On feature/FEAT-008-realtime-activity-feed (clean)
+- Step 0.6 Phase Gate: COMPLETE (2026-06-30) - Roadmap populated, creative phases complete, Phase 1 done
+- Step 1 Read Task Context: COMPLETE (2026-06-30) - Phase 2 (recording + endpoint + broadcast) identified, Level 3
+- Step 2 Load Context: COMPLETE (2026-06-30) - Architecture creative loaded (Q1-Q4 decisions); existing patterns read
+- Step 3 Test Writer: COMPLETE (2026-06-30) - activity.test.ts (6) + cards.test.ts (+6) + mutationBroadcast.test.ts (+3)
+- Step 4 Coding Agent: COMPLETE (2026-06-30) - events.ts, notify.ts, cards.ts PATCH, routes/activity.ts, routes/index.ts
+- Step 6/7 Verification: COMPLETE (2026-06-30) - 174/174 tests pass; tsc clean; no lint gate configured (tsc is quality gate)
+- Step 9 Documentation: COMPLETE (2026-06-30) - techContext.md updated (endpoint, event type, recording hook)
+- Step 10 Memory Bank: COMPLETE (2026-06-30) - roadmap Phase 2 checked, registry + progress updated
 
 ### Sub-Agents
-- (Phase 1 executed in-orchestrator with TDD discipline — tightly-scoped persistence phase)
+- (Phase 2 executed in-orchestrator with TDD discipline — tightly-scoped backend phase, mirrors Phase 1)
 
 ### Resumption Notes
-**Can Resume**: NO (Phase 1 complete; awaiting human review)
+**Can Resume**: NO (Phase 2 complete; awaiting human review)
 **Resume From**: N/A
-**Notes**: Next: /banyan-build TASK-008 for Phase 2 (recording + REST endpoint + SSE broadcast)
+**Notes**: Next: /banyan-build TASK-008 for Phase 3 (frontend ActivityFeed + integration). Key Phase-2 test gotcha for Phase 3 reference: pg returns a fresh row per query, so test mocks must return COPIES of stored rows (not live refs) — the pre-flight findById snapshot must not alias the row UPDATE mutates in place.
+
+### Phase 1 — COMPLETE (2026-06-30)
+- migration + src/db/activity.ts DAL + src/db/activity.test.ts (9 tests); full suite 159/159; tsc clean; committed.
 
 ### Prior Planning/Creative (complete)
 - Architecture Design: COMPLETE — memory-bank/creative/TASK-008-activity-feed-architecture.md

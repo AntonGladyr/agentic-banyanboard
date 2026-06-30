@@ -49,7 +49,8 @@ import { validateCreate, validateUpdate, validateId } from '../validation/card';
 import { notFoundError } from '../errors';
 import { create, listByBoard, findById, update, remove } from '../db/cards';
 import { findById as findBoardById } from '../db/boards';
-import { notifyCardChange } from '../realtime/notify';
+import { insert as insertActivity } from '../db/activity';
+import { notifyCardChange, notifyCardMoved } from '../realtime/notify';
 
 // mergeParams: true exposes the parent-mount `:boardId` param to these handlers.
 const cardsRouter = Router({ mergeParams: true });
@@ -121,6 +122,10 @@ cardsRouter.patch(
       const boardId = validateId(req.params.boardId ?? '');
       const id = validateId(req.params.id ?? '');
       const input = validateUpdate(req.body);
+      // Pre-flight read to capture the pre-update status for the activity feed (TASK-008). Mirrors the
+      // DELETE handler's pre-flight read below; `findById` already exists, so no new DAL query. The
+      // existing update()→null→404 path is unaffected (both reads agree on an absent card).
+      const before = await findById(id);
       const card = await update(id, input);
       if (card === null) {
         throw notFoundError(`card ${id} not found`);
@@ -129,6 +134,23 @@ cardsRouter.patch(
       res.status(200).json(card);
       // Broadcast covers edit AND drag-and-drop status change (Architecture Decision 2).
       notifyCardChange('card:updated', boardId, card, req);
+      // Record + broadcast the move ONLY on a real status change (TASK-008 — AC-ACTIVITY-ONLY-MOVES-1),
+      // AFTER the response so a recording failure can never corrupt the already-sent 200 (fire-and-
+      // forget posture). `before !== null` guards the race where the row vanished between read and update.
+      if (input.status !== undefined && before !== null && before.status !== card.status) {
+        const activity = await insertActivity({
+          board_id: boardId,
+          card_id: id,
+          card_title: card.title, // snapshot at move time — survives later rename/delete
+          from_status: before.status,
+          to_status: card.status,
+        });
+        req.log.info(
+          { cardId: id, boardId, fromStatus: before.status, toStatus: card.status },
+          'card moved',
+        ); // AC-OBS-1
+        notifyCardMoved(boardId, activity, req);
+      }
     } catch (err) {
       next(err);
     }
