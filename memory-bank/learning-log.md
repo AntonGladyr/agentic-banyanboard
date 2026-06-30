@@ -152,3 +152,16 @@ Chronological record of pattern extraction and consolidation events from task re
 - Promoted: 1 file — `frontend.md` **low → medium** (evidence_count 4 ≥ promotion threshold 3; the TASK-007 reflection deferred this, the archive consolidation gate applied it)
 - Pruned: 0 excess bullets (max 6 bullets/file < max 15)
 - Reindexed: regenerated `agent-rules-index.md` (7 files; refreshed `frontend.md` priority low → medium)
+
+---
+
+## 2026-06-30 - TASK-008 Reflection
+
+### Extracted Patterns
+- **realtime** → amended `agent-rules/_learned/realtime.md` (evidence count: 1 → 2) — when an event must reach ALL clients including the originator, omit `originId` from its TypeScript interface entirely (structural no-echo-dedup, immune to guard refactors); add it as an additive `RealtimeEventType` union member so the generic broadcaster/eventsRouter need no transport change.
+- **frontend** → amended `agent-rules/_learned/frontend.md` (evidence count: 4 → 5) — fire optional/non-critical panel fetches (activity feed, sidebar, notification count) in their own `try/catch` OUTSIDE the primary `Promise.all` so a non-critical fetch failure can never block page render.
+- **testing-patterns** → amended `agent-rules/_learned/testing-patterns.md` (evidence count: 6 → 7) — inject SSE frames in the hermetic Playwright project via an `addInitScript` controllable `EventSource` stub exposing `window.__emitSSE`; scope feed/list-entry queries to the panel landmark (kanban cards also expose `role="listitem"`); TRUNCATE new tables in the E2E DB-setup script.
+- **api-design** → amended `agent-rules/_learned/api-design.md` (evidence count: 4 → 5) — apply migrations explicitly in every deploy + E2E harness startup; a missing migration is a runtime 500 unit tests miss but UAT/E2E catches. `scripts/*.mjs` glob + `migrations`/`deployment` topics added.
+
+### systemPatterns.md Updates
+- None — all 4 learnings are coding/testing/ops practices captured in the `_learned/` rules. The no-`originId` pattern extends the already-documented realtime echo-de-dup (in `realtime.md`); the controllable `EventSource` stub is a testing technique (in `testing-patterns.md`), not a Guiding Principle (consistent with TASK-006/007 handling).

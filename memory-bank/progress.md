@@ -2,6 +2,21 @@
 
 ---
 
+## Reflection: TASK-008 (Realtime Activity Feed) — REFLECTION_COMPLETE
+
+**Date**: 2026-06-30
+**Document**: memory-bank/reflection/reflection-TASK-008.md
+**Dimensions Evaluated**: Task Quality, Ecosystem Effectiveness
+
+- **Task Quality: Excellent / Success** — all 12 MUST ACs met with direct evidence across 52 unit/integration tests + 7 Playwright E2E (vs. planned 28–36; overcount is quality-direction). Zero mid-phase design reversals across the 4 build phases; the FEAT-007 SSE transport was reused (not re-implemented) — `activity:card_moved` shipped as an additive `RealtimeEventType` union member needing no broadcaster/eventsRouter change. The no-`originId` activity-event envelope is the standout decision: structural absence over a conditional de-dup guard. NFRs held (index for p95, GP3 pino-only, GP5 no-leak, WCAG AA).
+- **Ecosystem Effectiveness: Highly Effective** — **first successful `/banyan-uat` run in project history**; the UAT → E2E-spec → Phase-4 Playwright pipeline worked end-to-end and surfaced 2 deploy-runbook gaps (UAT-REC-01 migration not applied to dev DB; UAT-REC-02 `npm run migrate` not loading `.env`) that unit tests cannot catch. Creative-phase-as-implementation-contract at peak ROI (8 decisions, 0 reversals). Persistent gaps: by-task session logs absent (8th consecutive task — now a material audit-quality ceiling); no frontend context file in the plugin (3rd consecutive frontend task).
+- **Continuous learning**: 4 learnings extracted → **4 amended, 0 created** — `realtime.md` (1→2: omit `originId` from all-clients events; additive union member), `frontend.md` (4→5: fire non-critical fetches outside the primary `Promise.all`), `testing-patterns.md` (6→7: controllable `EventSource` stub via `addInitScript`/`window.__emitSSE` for hermetic SSE injection; scope entry queries to the panel landmark), `api-design.md` (4→5: apply migrations explicitly in deploy + E2E harness startup). systemPatterns unchanged.
+- **Carried follow-ups**: deploy runbook must apply migrations + load `DATABASE_URL` (UAT-REC-01/02); by-task session logging infra fix; OpenAPI spec (carried since FEAT-004/005); multi-stage Dockerfile; `banyanboard_e2e` accumulation cleanup; frontend context file for the plugin.
+
+Recommendation: ready to archive. Next: /banyan-archive TASK-008.
+
+---
+
 ## Build Phase: TASK-008 (Realtime Activity Feed) — Phase 4/4 COMPLETE → BUILD_COMPLETE
 
 **Date**: 2026-06-30

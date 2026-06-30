@@ -3,8 +3,8 @@ name: "Learned: Testing Patterns"
 globs: ["**/*.test.ts", "*.test.ts", "src/db/**", "src/routes/**", "client/e2e/**", "**/*.spec.ts"]
 topics: ["testing", "jest", "logging", "mocking", "e2e", "playwright", "realtime"]
 priority: medium
-evidence_count: 6
-last_updated: 2026-06-21
+evidence_count: 7
+last_updated: 2026-06-30
 auto_generated: true
 ---
 
@@ -16,6 +16,7 @@ auto_generated: true
 - When integration tests must exercise persistence round-trips and stub-detection ACs, back the mocked `getPool().query` with a minimal in-memory store (Map/array + auto-increment counter) that interprets the SQL — simple fixed-response mocks cannot satisfy "created row is genuinely retrievable later" or "two creates yield distinct ids."
 - For frontend E2E, make Playwright suites hermetic with `page.route('**/api/v1/**')` to mock the API (no real DB/seed step) while still running the SPA and production static-serving path through a real built server (`node dist/index.js`) — reserve a seeded-DB E2E variant for a follow-up task when true DB round-trip coverage is needed.
 - To E2E-verify cross-context server-push (SSE/WebSocket between two browser contexts), add a dedicated real-DB Playwright project (real backend + isolated DB) alongside the hermetic project — a mocked API cannot broadcast an event from one context to another; keep all single-context journeys on the hermetic project.
+- To exercise a single-context realtime UI in the hermetic (mocked-API) Playwright project, install a controllable `EventSource` stub via `addInitScript` (before navigation) that exposes `window.__emitSSE`; trigger the mocked mutation, then call `__emitSSE` to simulate the server's broadcast frame — keep the genuine SSE path on the real-DB project. Also: scope feed/list-entry queries to the panel's landmark (e.g. `complementary`/`aria-label`) since kanban cards also expose `role="listitem"`, and TRUNCATE any new table in the E2E DB-setup script.
 
 ## Evidence
 
@@ -27,3 +28,4 @@ auto_generated: true
 | in-memory store behind mocked getPool().query makes persistence/stub-detection ACs meaningful | [reflection-TASK-004.md](../../reflection/reflection-TASK-004.md) | 2026-06-17 |
 | hermetic Playwright E2E via page.route against real built server; seeded-DB variant as follow-up | [reflection-TASK-006.md](../../reflection/reflection-TASK-006.md) | 2026-06-21 |
 | dedicated real-DB Playwright project for cross-context SSE/WebSocket; hermetic project for single-context | [reflection-TASK-007.md](../../reflection/reflection-TASK-007.md) | 2026-06-21 |
+| controllable EventSource stub (addInitScript → window.__emitSSE) injects SSE frames in hermetic Playwright; scope entry queries to landmark | [reflection-TASK-008.md](../../reflection/reflection-TASK-008.md) | 2026-06-30 |

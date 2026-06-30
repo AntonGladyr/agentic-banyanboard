@@ -9,4 +9,4 @@
 | TASK-005 | Card model with CRUD endpoints   | ARCHIVE | COMPLETE            | FEAT-004 |
 | TASK-006 | React frontend board UI          | ARCHIVE | COMPLETE            | FEAT-006 |
 | TASK-007 | Board interactivity & real-time  | ARCHIVE | COMPLETE            | FEAT-007 |
-| TASK-008 | Realtime Activity Feed           | BUILD   | BUILD_COMPLETE      | FEAT-008 |
+| TASK-008 | Realtime Activity Feed           | REFLECT | REFLECTION_COMPLETE | FEAT-008 |
